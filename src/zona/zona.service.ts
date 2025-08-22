@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Zona } from './zona.entity'
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { CreateZonaDto } from './dto/create-zona.dto'
+import { CreateZonaDto } from './dto/create-zona.dto';
 import { UpdateZonaDto } from './dto/update-zona.dto';
 
 @Injectable()
