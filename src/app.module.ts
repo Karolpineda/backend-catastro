@@ -14,7 +14,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
       password: 'postgres',
       database: 'catastro_tp',
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
-      synchronize: true,
+      synchronize: false,
+      migrations: [__dirname + '/migrations/*{.ts,.js}'],
     }),
       
     ZonaModule, ],

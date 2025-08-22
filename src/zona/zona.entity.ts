@@ -2,7 +2,7 @@ import { Column, Entity,PrimaryGeneratedColumn } from "typeorm";
 
 @Entity()
 
-class Zona {
+export class Zona {
 
     @PrimaryGeneratedColumn("uuid")
 
