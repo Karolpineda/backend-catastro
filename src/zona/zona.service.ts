@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { Zona } from './zona.entity'
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Like, Not, And, Repository, Or } from 'typeorm';
 import { CreateZonaDto } from './dto/create-zona.dto';
 import { UpdateZonaDto } from './dto/update-zona.dto';
+import { not } from 'rxjs/internal/util/not';
 
 @Injectable()
 export class ZonaService {
@@ -29,6 +30,27 @@ export class ZonaService {
 
     updateZona(id_zona:number,zona: UpdateZonaDto){
         return this.zonaRepository.update(id_zona, zona);
+    }
+
+    getZonaNotDireccion(){
+        return this.zonaRepository.find({ 
+            where: { 
+            nombre_zona: And(
+                Not(Like('UNIDAD%')),
+                Not(Like('DIRECCIÓN%')),
+                Not(Like('ALCALDÍA%'))
+            )
+         } });    
+    }
+    getDirección(){
+        return this.zonaRepository.find({ 
+            where: { 
+            nombre_zona: Or(
+                (Like('UNIDAD%')),
+                (Like('DIRECCIÓN%')),
+                (Like('ALCALDÍA%'))
+            )
+         } });    
     }
  }
 

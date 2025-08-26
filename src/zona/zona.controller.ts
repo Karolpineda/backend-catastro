@@ -33,6 +33,16 @@ export class ZonaController {
     updateZona(@Param('id_zona', ParseIntPipe) id_zona:number, @Body() updateZona: UpdateZonaDto){
         return this.zonaService.updateZona(id_zona, updateZona);
     }
+
+    @Get('direccion/exclude')
+    getZonaDireccion(){
+        return this.zonaService.getZonaNotDireccion();    
+    }
+
+    @Get('direccion/include')
+    getDirección(){
+        return this.zonaService.getDirección();    
+    }
     
 
 }
