@@ -3,9 +3,9 @@ import { Usuario } from '../../usuario/usuario.entity';
 import { Rol } from '../../rol/rol.entity';
 
 @Entity()
-export class UsersRol {
+export class Rol_Usuario {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id_rol_usuario: string;
 
   @ManyToOne(() => Usuario, { eager: true, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'id_usuario' })
