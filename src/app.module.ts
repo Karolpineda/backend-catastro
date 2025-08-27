@@ -8,6 +8,7 @@ import { RolModule } from './rol/rol.module';
 import { SistemaModule } from './sistema/sistema.module';
 import { DependenciaModule } from './dependencia/dependencia.module';
 import { ClasifCatastralModule } from './clasif_catastral/clasif_catastral.module';
+import { CategoriaModule } from './categoria/categoria.module';
 import { UsersRolModule } from './users_rol/users_rol.module';
 
 @Module({
@@ -24,7 +25,7 @@ import { UsersRolModule } from './users_rol/users_rol.module';
         password: config.get('DB_PASSWORD'),
         database: config.get('DB_DATABASE'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: true,
+        synchronize: false,
         migrations: [__dirname + '/migrations/*{.ts,.js}'],
       }),
     }),
@@ -35,6 +36,7 @@ import { UsersRolModule } from './users_rol/users_rol.module';
     SistemaModule,
     DependenciaModule,
     ClasifCatastralModule,
+    CategoriaModule,
     UsersRolModule,
   ],
   controllers: [],
