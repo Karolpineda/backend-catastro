@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ZonaModule } from './zona/zona.module';
 import { UsuarioModule } from './usuario/usuario.module';
 import { EstadoAccIncModule } from './estado_acc_inc/estado_acc_inc.module';
@@ -7,25 +8,35 @@ import { RolModule } from './rol/rol.module';
 import { SistemaModule } from './sistema/sistema.module';
 import { DependenciaModule } from './dependencia/dependencia.module';
 import { ClasifCatastralModule } from './clasif_catastral/clasif_catastral.module';
-import { CategoriaModule } from './categoria/categoria.module';
-
+import { UsersRolModule } from './users_rol/users_rol.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      port: 5432,
-      host: 'localhost',
-      username: 'postgres',
-      password: 'postgres',
-      database: 'catastro_tp',
-      entities: [__dirname + '/**/*.entity{.ts,.js}'],
-      synchronize: false,
-      migrations: [__dirname + '/migrations/*{.ts,.js}'],
+    ConfigModule.forRoot({ isGlobal: true }),
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        type: 'postgres',
+        host: config.get('DB_HOST'),
+        port: config.get('DB_PORT'),
+        username: config.get('DB_USERNAME'),
+        password: config.get('DB_PASSWORD'),
+        database: config.get('DB_DATABASE'),
+        entities: [__dirname + '/**/*.entity{.ts,.js}'],
+        synchronize: true,
+        migrations: [__dirname + '/migrations/*{.ts,.js}'],
+      }),
     }),
-      
-    ZonaModule, UsuarioModule, EstadoAccIncModule, RolModule, SistemaModule, DependenciaModule, ClasifCatastralModule, CategoriaModule],
+    ZonaModule,
+    UsuarioModule,
+    EstadoAccIncModule,
+    RolModule,
+    SistemaModule,
+    DependenciaModule,
+    ClasifCatastralModule,
+    UsersRolModule,
+  ],
   controllers: [],
-
 })
 export class AppModule {}
