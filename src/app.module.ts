@@ -10,6 +10,7 @@ import { DependenciaModule } from './dependencia/dependencia.module';
 import { ClasifCatastralModule } from './clasif_catastral/clasif_catastral.module';
 import { CategoriaModule } from './categoria/categoria.module';
 import { UsersRolModule } from './users_rol/users_rol.module';
+import { VersionamientoModule } from './versionamiento/versionamiento.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { UsersRolModule } from './users_rol/users_rol.module';
     ClasifCatastralModule,
     CategoriaModule,
     UsersRolModule,
+    VersionamientoModule,
   ],
   controllers: [],
 })
