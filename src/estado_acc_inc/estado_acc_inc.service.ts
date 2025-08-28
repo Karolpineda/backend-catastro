@@ -31,4 +31,5 @@ export class EstadoAccIncService {
         return  this.estadoAccIncRepository.update(id_estado_acc_inc, estadoAccInc);
     }
 
+    
 }
