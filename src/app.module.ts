@@ -11,6 +11,8 @@ import { ClasifCatastralModule } from './clasif_catastral/clasif_catastral.modul
 import { CategoriaModule } from './categoria/categoria.module';
 import { UsersRolModule } from './users_rol/users_rol.module';
 import { VersionamientoModule } from './versionamiento/versionamiento.module';
+import { EstadoRequerimientoModule } from './estado_requerimiento/estado_requerimiento.module';
+import { IncidenteModule } from './incidente/incidente.module';
 
 @Module({
   imports: [
@@ -40,6 +42,8 @@ import { VersionamientoModule } from './versionamiento/versionamiento.module';
     CategoriaModule,
     UsersRolModule,
     VersionamientoModule,
+    EstadoRequerimientoModule,
+    IncidenteModule,
   ],
   controllers: [],
 })
