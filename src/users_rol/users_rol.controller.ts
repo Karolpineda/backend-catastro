@@ -1,17 +1,10 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Delete,
-} from '@nestjs/common';
+import { Controller,Get,Post,Body,Param,Delete,UseGuards, ParseIntPipe} from '@nestjs/common';
 import { UsersRolService } from './users_rol.service';
 import { CreateUsersRolDto } from './dto/create-users_rol.dto';
-import { UpdateUsersRolDto } from './dto/update-users_rol.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('users-rol')
+@UseGuards(JwtAuthGuard)
 export class UsersRolController {
   constructor(private readonly usersRolService: UsersRolService) {}
 
@@ -27,19 +20,21 @@ export class UsersRolController {
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.usersRolService.findOne(+id);
+  return this.usersRolService.findOne(Number(id));
   }
 
-  @Patch(':id')
-  update(
-    @Param('id') id: string,
-    @Body() updateUsersRolDto: UpdateUsersRolDto,
-  ) {
-    return this.usersRolService.update(+id, updateUsersRolDto);
+  @Get('usuario/:userId')
+  findByUser(@Param('userId', ParseIntPipe) userId: number) {
+    return this.usersRolService.findByUser(userId);
+  }
+
+  @Get('rol/:rolId')
+  findByRol(@Param('rolId') rolId: number) {
+    return this.usersRolService.findByRol(rolId);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.usersRolService.remove(+id);
+  remove(@Param('id') id: number) {
+    return this.usersRolService.remove(id);
   }
 }
