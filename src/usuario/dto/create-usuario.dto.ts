@@ -3,5 +3,5 @@ export class CreateUsuarioDto {
     apellidos_usuario: string;
     nombre_usuario: string;
     correo_usuario: string;
-    contraseña_usuario: string;
+    contrasenia_usuario: string;
 }
