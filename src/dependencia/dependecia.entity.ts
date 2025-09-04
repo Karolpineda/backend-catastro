@@ -2,16 +2,16 @@ import { Column, Entity,PrimaryGeneratedColumn } from "typeorm";
 
 @Entity()
 export class Dependencia{
-     @PrimaryGeneratedColumn("uuid")
+     @PrimaryGeneratedColumn()
     id_dependencia: number
 
-    @Column({unique: true})
+    @Column({nullable: false, default: ''})
     nombre_dependencia:string
 
     @Column({nullable: true})
     descrip_dependencia: string
 
-    @Column({unique: true})
+    @Column({nullable: false, default: ''})
     sigla_dependencia: string
 
 

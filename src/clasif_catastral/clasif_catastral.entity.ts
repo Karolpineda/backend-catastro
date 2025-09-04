@@ -2,16 +2,16 @@ import { Column, Entity,PrimaryGeneratedColumn } from "typeorm";
 
 @Entity()
 export class Clasif_catastral{
-    @PrimaryGeneratedColumn("uuid")
+    @PrimaryGeneratedColumn()
     id_clasif_catastral: number
 
-    @Column({unique: true})
+    @Column({ nullable: false, default: ''})
     nombre_clasif_catastral:string
 
     @Column({nullable: true})
     descrip_clasif_catastral: string
 
-    @Column({unique: true})
+    @Column({nullable: true})
     sigla_clasif_catastral: string
 
 }

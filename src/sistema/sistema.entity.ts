@@ -3,13 +3,13 @@ import { Column, Entity,PrimaryGeneratedColumn } from "typeorm";
 @Entity()
 export class Sistema {
 
-    @PrimaryGeneratedColumn("uuid")
+    @PrimaryGeneratedColumn()
     id_sistema: number
 
-    @Column({unique: true})
+    @Column({nullable: true, default: '' })
     nom_sistema: string
 
-    @Column({unique: true})
+    @Column({nullable: false, default:''})
     siglas_sistema: string
 
     @Column({nullable: true})

@@ -43,7 +43,7 @@ export class Incidente {
   fech_solucion: Date;
 
   @Column({ type: 'bytea', nullable: true })
-  error_img: Buffer
+  error_img: Buffer | null;
 
   // Timestamps automáticos
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })

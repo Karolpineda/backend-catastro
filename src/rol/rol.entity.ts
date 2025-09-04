@@ -4,13 +4,22 @@ import { Column, Entity,PrimaryGeneratedColumn } from "typeorm";
 
 export class Rol {
 
-    @PrimaryGeneratedColumn("uuid")
-    id_rol: number
+    @PrimaryGeneratedColumn()
+  id_rol: number;
 
-    @Column({unique: true})
-    nombre_rol:string
+  @Column({
+    type: 'varchar',
+    length: 100,
+    nullable: false,
+    default: 'Rol sin nombre' // Valor por defecto
+  })
+  nombre_rol: string;
 
-    @Column({nullable: true})
-    descrip_rol: string
+  @Column({
+    type: 'text',
+    nullable: false,
+    default: 'Sin descripción' // Valor por defecto
+  })
+  descrip_rol: string;
 
 }

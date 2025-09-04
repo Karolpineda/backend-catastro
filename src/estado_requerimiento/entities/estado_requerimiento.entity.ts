@@ -4,10 +4,10 @@ import { Column, Entity,PrimaryGeneratedColumn } from "typeorm";
 
 export class Estado_requerimiento {
 
-    @PrimaryGeneratedColumn("uuid")
+    @PrimaryGeneratedColumn()
     id_estado_requerimiento: number
 
-    @Column({unique: true})
+    @Column({nullable: false, default: 'Sin nombre' })
     nombre_estado_requerimiento:string
 
     @Column({nullable: true})

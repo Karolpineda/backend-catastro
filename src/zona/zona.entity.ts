@@ -4,11 +4,11 @@ import { Column, Entity,PrimaryGeneratedColumn } from "typeorm";
 
 export class Zona {
 
-    @PrimaryGeneratedColumn("uuid")
+    @PrimaryGeneratedColumn()
 
     id_zona: number
 
-    @Column({unique: true})
+    @Column({unique: true, nullable: true })
     nombre_zona:string
 
     @Column({nullable: true})
