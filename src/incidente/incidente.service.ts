@@ -1,6 +1,6 @@
 import { HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository,Not } from 'typeorm';
 import { Incidente } from './entities/incidente.entity';
 import { CreateIncidenteDto } from './dto/create-incidente.dto';
 import { UpdateIncidenteDto } from './dto/update-incidente.dto';
@@ -183,47 +183,149 @@ export class IncidenteService {
                 estado: i.estado_acc_inc?.nombre_estado_acc_inc, 
               }));
       }
-      async update(no_incidente: string, updateIncidenteDto: UpdateIncidenteDto): Promise<Incidente> {
+      async updateIncidente(
+        no_incidente: string,
+        updateIncidenteDto: CreateIncidenteDto
+      ): Promise<Incidente> {
+        const queryRunner = this.incidenteRepository.manager.connection.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+
         try {
-          const incidente = await this.findNoIncidente(no_incidente);
-          if (!incidente) {
-            throw new HttpException('Incidente no encontrado', HttpStatus.NOT_FOUND);
+          // 1. VALIDAR QUE EL INCIDENTE EXISTA Y OBTENER EL ID
+          const incidente = await this.incidenteRepository.findOne({
+            where: { no_incidente },
+            relations: ['zona', 'estado_acc_inc', 'usuariosIncidente'],
+          });
+          if (!incidente) throw new NotFoundException(`Incidente ${no_incidente} no encontrado`);
+
+          // VERIFICACIÓN CRÍTICA: Asegurar que tenemos el ID del incidente
+          if (!incidente.id_incidente) {
+            throw new HttpException('No se pudo obtener el ID del incidente', HttpStatus.INTERNAL_SERVER_ERROR);
           }
+
+          console.log('Incidente encontrado - ID:', incidente.id_incidente, 'No:', incidente.no_incidente);
+
+          // 2. VALIDAR ZONA SI VIENE
           if (updateIncidenteDto.id_zona) {
-            const zonaFound = await this.zonaRepository.findOne({ 
-              where: { id_zona: updateIncidenteDto.id_zona } 
-            });
-            
-            if (!zonaFound) {
-              throw new HttpException('Zona no existe', HttpStatus.NOT_FOUND);
-            }
+            const zonaFound = await this.zonaRepository.findOne({ where: { id_zona: updateIncidenteDto.id_zona } });
+            if (!zonaFound) throw new HttpException('Zona no existe', HttpStatus.NOT_FOUND);
             incidente.zona = zonaFound;
           }
 
-          Object.assign(incidente, updateIncidenteDto);
+          // 3. VALIDACIONES BÁSICAS
+          if (updateIncidenteDto.no_incidente) {
+            const incidenteConNuevoNumero = await this.incidenteRepository.findOne({ 
+              where: { 
+                no_incidente: updateIncidenteDto.no_incidente.trim().toUpperCase(),
+                id_incidente: Not(incidente.id_incidente)
+              } 
+            });
+            if (incidenteConNuevoNumero) {
+              throw new HttpException('Número de incidente ya existe', HttpStatus.CONFLICT);
+            }
+            
+            incidente.no_incidente = updateIncidenteDto.no_incidente.trim().toUpperCase();
+          }
 
-          if (updateIncidenteDto.error_img !== undefined) {
-            if (updateIncidenteDto.error_img === null) {
-              incidente.error_img = null;
-            } else if (updateIncidenteDto.error_img) {
-              if (!this.esBase64Valido(updateIncidenteDto.error_img)) {
-                throw new HttpException('El formato de la imagen no es válido', HttpStatus.BAD_REQUEST);
-              }
-              incidente.error_img = Buffer.from(updateIncidenteDto.error_img, 'base64');
+          if (updateIncidenteDto.añosirecq && updateIncidenteDto.añosirecq > new Date().getFullYear() + 1) {
+            throw new HttpException('Año no puede ser futuro', HttpStatus.BAD_REQUEST);
+          }
+
+          // 4. ACTUALIZAR CAMPOS PRINCIPALES
+          incidente.tipologia = updateIncidenteDto.tipologia ?? incidente.tipologia;
+          incidente.descripcionerror = updateIncidenteDto.descripcionerror ?? incidente.descripcionerror;
+          incidente.añosirecq = updateIncidenteDto.añosirecq ?? incidente.añosirecq;
+          incidente.updatedAt = new Date();
+
+          if (updateIncidenteDto.error_img) {
+            if (!this.esBase64Valido(updateIncidenteDto.error_img)) {
+              throw new HttpException('Formato de imagen no válido', HttpStatus.BAD_REQUEST);
+            }
+            incidente.error_img = Buffer.from(updateIncidenteDto.error_img, 'base64');
+          }
+
+          // 5. ACTUALIZAR ASIGNACIONES - ACTUALIZAR EXISTENTES
+      if (updateIncidenteDto.asignaciones !== undefined) {
+        // Validar asignaciones primero
+        if (updateIncidenteDto.asignaciones.length > 0) {
+          for (const asignacion of updateIncidenteDto.asignaciones) {
+            const rolUsuarioValido = await this.usersRolService.findOne(asignacion.idRolUsuario);
+            if (!rolUsuarioValido) {
+              throw new HttpException(`RolUsuario ${asignacion.idRolUsuario} no existe`, HttpStatus.BAD_REQUEST);
+            }
+            if (rolUsuarioValido.rol.id_rol !== 2 && rolUsuarioValido.rol.id_rol !== 7) {
+              throw new HttpException(`RolUsuario ${asignacion.idRolUsuario} no tiene rol válido`, HttpStatus.BAD_REQUEST);
             }
           }
-          incidente.updatedAt = new Date();
-          return await this.incidenteRepository.save(incidente);
-          
-        } catch (error) {
-          if (error instanceof HttpException || error instanceof NotFoundException) {
-            throw error;
-          }
-          
-          throw new HttpException(
-            'Error al actualizar el incidente: ' + error.message,
-            HttpStatus.INTERNAL_SERVER_ERROR
+        }
+
+        // Obtener las asignaciones actuales del incidente
+        const asignacionesActuales = await this.usuarioIncidenteRepository.find({
+          where: { incidente: { id_incidente: incidente.id_incidente } },
+          relations: ['rolUsuario']
+        });
+
+        console.log('Asignaciones actuales:', asignacionesActuales);
+        console.log('Nuevas asignaciones:', updateIncidenteDto.asignaciones);
+
+        // SOLUCIÓN: ACTUALIZAR las existentes en lugar de eliminar y crear
+        const connection = this.incidenteRepository.manager.connection;
+
+        // Caso 1: Actualizar asignaciones existentes
+        const minLength = Math.min(asignacionesActuales.length, updateIncidenteDto.asignaciones.length);
+        
+        for (let i = 0; i < minLength; i++) {
+          await connection.query(
+            `UPDATE usuario_incidente SET id_rol_usuario = $1 WHERE id_usuario_incidente = $2`,
+            [updateIncidenteDto.asignaciones[i].idRolUsuario, asignacionesActuales[i].id_usuario_incidente]
           );
+        }
+
+        // Caso 2: Crear nuevas asignaciones si el DTO tiene más
+        for (let i = minLength; i < updateIncidenteDto.asignaciones.length; i++) {
+          await connection.query(
+            `INSERT INTO usuario_incidente (id_incidente, id_rol_usuario) VALUES ($1, $2)`,
+            [incidente.id_incidente, updateIncidenteDto.asignaciones[i].idRolUsuario]
+          );
+        }
+
+        // Caso 3: Eliminar asignaciones sobrantes si hay más existentes
+        for (let i = minLength; i < asignacionesActuales.length; i++) {
+          await connection.query(
+            `DELETE FROM usuario_incidente WHERE id_usuario_incidente = $1`,
+            [asignacionesActuales[i].id_usuario_incidente]
+          );
+        }
+      }
+
+          // 6. GUARDAR INCIDENTE ACTUALIZADO
+          const incidenteActualizado = await queryRunner.manager.save(incidente);
+          await queryRunner.commitTransaction();
+
+          // 7. RETORNAR INCIDENTE COMPLETO CON RELACIONES
+          const incidenteActualizadoCompleto = await this.incidenteRepository.findOne({
+            where: { id_incidente: incidenteActualizado.id_incidente },
+            relations: [
+              'zona', 
+              'estado_acc_inc',
+              'usuariosIncidente',
+              'usuariosIncidente.rolUsuario',
+              'usuariosIncidente.rolUsuario.usuario',
+              'usuariosIncidente.rolUsuario.rol'
+            ],
+          });
+
+          if (!incidenteActualizadoCompleto) throw new NotFoundException('Incidente no encontrado después de actualizar');
+          return incidenteActualizadoCompleto;
+
+        } catch (error) {
+          await queryRunner.rollbackTransaction();
+          console.error('Error detallado:', error);
+          if (error instanceof HttpException) throw error;
+          throw new HttpException(`Error al actualizar incidente: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+        } finally {
+          await queryRunner.release();
         }
       }
       async remove(no_incidente: string): Promise<void> {

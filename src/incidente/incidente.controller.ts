@@ -79,24 +79,12 @@ export class IncidenteController {
       @Patch(':no_incidente')
         async update(
           @Param('no_incidente') no_incidente: string,
-          @Body() updateIncidenteDto: UpdateIncidenteDto
+          @Body() updateIncidenteDto: CreateIncidenteDto
         ): Promise<Incidente> {
-          try {
-            const incidente = await this.incidenteService.update(no_incidente, updateIncidenteDto);
-            if (!incidente) {
-              throw new HttpException('Incidente no encontrado', HttpStatus.NOT_FOUND);
-            }
-            return incidente;
-          } catch (error) {
-            if (error instanceof HttpException) {
-              throw error;
-            }
-            throw new HttpException(
-              error.message || 'Error al actualizar el incidente',
-              HttpStatus.BAD_REQUEST
-            );
-          }
+          return this.incidenteService.updateIncidente(no_incidente, updateIncidenteDto);
         }
+
+
 
       @Delete(':no_incidente')
       async remove(@Param('no_incidente') no_incidente: string): Promise<void> {

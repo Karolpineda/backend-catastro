@@ -7,9 +7,6 @@ export class CreateIncidenteDto {
   @IsNumber()
   id_zona?: number;
 
-  @IsNumber()
-  id_estado_acc_inc: number;
-
   @IsOptional()
   @IsDate()
   @Type(() => Date)
