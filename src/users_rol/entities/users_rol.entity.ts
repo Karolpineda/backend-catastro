@@ -1,6 +1,8 @@
-import { Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { Usuario } from '../../usuario/usuario.entity';
 import { Rol } from '../../rol/rol.entity';
+import { UsuarioIncidente } from 'src/usuario_incidente/entities/usuario_incidente.entity';
+
 
 @Entity()
 export class Rol_Usuario {
@@ -14,4 +16,7 @@ export class Rol_Usuario {
   @ManyToOne(() => Rol, { eager: true, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'id_rol' })
   rol: Rol;
+
+  @OneToMany(() => UsuarioIncidente, usuarioIncidente => usuarioIncidente.rolUsuario)
+  usuariosIncidente: UsuarioIncidente[];
 }

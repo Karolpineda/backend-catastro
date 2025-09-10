@@ -112,4 +112,40 @@ export class UsersRolService {
     await this.userRolRepository.remove(userRol);
     return { message: 'Asignación eliminada correctamente' };
   }
+  // Método para traer al responsable
+async getTecnicoIncidentes(): Promise<{ nombre_completo: string }[]> {
+  const usuarios = await this.userRolRepository.find({
+    where: { rol: { id_rol: 7 } }, 
+    relations: ['usuario'],
+    select: {
+      usuario: {
+        nombre_usuario: true,
+        apellidos_usuario: true,
+      },
+    },
+  });
+
+  return usuarios.map(ru => ({
+    nombre_completo: `${ru.usuario.nombre_usuario} ${ru.usuario.apellidos_usuario}`,
+  }));
+}
+
+// Método para traer a los analistas
+async getAnalistasIncidentes(): Promise<{ nombre_completo: string }[]> {
+  const usuarios = await this.userRolRepository.find({
+    where: { rol: { id_rol: 2 } }, 
+    relations: ['usuario'],
+    select: {
+      usuario: {
+        nombre_usuario: true,
+        apellidos_usuario: true,
+      },
+    },
+  });
+
+  return usuarios.map(ru => ({
+    nombre_completo: `${ru.usuario.nombre_usuario} ${ru.usuario.apellidos_usuario}`,
+  }));
+}
+
 }

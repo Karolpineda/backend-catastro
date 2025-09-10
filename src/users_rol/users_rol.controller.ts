@@ -37,4 +37,15 @@ export class UsersRolController {
   remove(@Param('id') id: number) {
     return this.usersRolService.remove(id);
   }
+
+  @Get('tecIncidente')
+  async getResponsable() {
+    return await this.usersRolService.getTecnicoIncidentes();
+  }
+
+  // Endpoint para obtener analistas
+  @Get('analistas')
+  async getAnalistas() {
+    return await this.usersRolService.getTecnicoIncidentes();
+  }
 }
