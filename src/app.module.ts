@@ -13,6 +13,7 @@ import { UsersRolModule } from './users_rol/users_rol.module';
 import { VersionamientoModule } from './versionamiento/versionamiento.module';
 import { EstadoRequerimientoModule } from './estado_requerimiento/estado_requerimiento.module';
 import { IncidenteModule } from './incidente/incidente.module';
+import { UsuarioIncidenteModule } from './usuario_incidente/usuario_incidente.module';
 
 @Module({
   imports: [
@@ -28,7 +29,7 @@ import { IncidenteModule } from './incidente/incidente.module';
         password: config.get('DB_PASSWORD'),
         database: config.get('DB_DATABASE'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: false,
+        synchronize: true,
         migrations: [__dirname + '/migrations/*{.ts,.js}'],
       }),
     }),
@@ -44,6 +45,7 @@ import { IncidenteModule } from './incidente/incidente.module';
     VersionamientoModule,
     EstadoRequerimientoModule,
     IncidenteModule,
+    UsuarioIncidenteModule,
   ],
   controllers: [],
 })

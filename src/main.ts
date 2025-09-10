@@ -7,7 +7,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.use(json({ limit: '30mb' }));
   
-  // ✅ AUMENTAR LÍMITE PARA URL-ENCODED (30MB)
+  app.setGlobalPrefix('api')
   app.use(urlencoded({ extended: true, limit: '30mb' }))
   app.enableCors({
     origin: true,
