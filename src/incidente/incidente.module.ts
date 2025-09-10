@@ -5,9 +5,12 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Incidente } from './entities/incidente.entity';
 import { Zona } from 'src/zona/zona.entity';
 import { Estado_acc_inc } from 'src/estado_acc_inc/estado_acc_inc.entity';
+import { Rol_Usuario } from 'src/users_rol/entities/users_rol.entity';
+import { UsersRolModule } from 'src/users_rol/users_rol.module'; 
+import { UsuarioIncidente } from 'src/usuario_incidente/entities/usuario_incidente.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Incidente, Zona, Estado_acc_inc])],
+  imports: [TypeOrmModule.forFeature([Incidente, Zona, Estado_acc_inc, Rol_Usuario, UsuarioIncidente]), UsersRolModule],
   controllers: [IncidenteController],
   providers: [IncidenteService],
 })

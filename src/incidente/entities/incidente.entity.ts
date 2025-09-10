@@ -1,7 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { Zona } from '../../zona/zona.entity'; 
 import { Estado_acc_inc } from '../../estado_acc_inc/estado_acc_inc.entity'; 
-
+import { UsuarioIncidente } from 'src/usuario_incidente/entities/usuario_incidente.entity';
 
 @Entity() 
 export class Incidente {
@@ -51,4 +51,7 @@ export class Incidente {
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
   updatedAt: Date;
+
+  @OneToMany(() => UsuarioIncidente, usuarioIncidente => usuarioIncidente.incidente)
+  usuariosIncidente: UsuarioIncidente[];
 }

@@ -27,7 +27,7 @@ export class UsuarioController {
         return this.usuarioService.deleteUsuario(cedula_usuario)
     }
     
-        @Patch(':cedula_usuario')
+    @Patch(':cedula_usuario')
         updateZona(@Param('id_zona') cedula_usuario:string, @Body() updateUsuario: UpdateUsuarioDto){
         return this.usuarioService.updateUsuario(cedula_usuario, updateUsuario);
     }

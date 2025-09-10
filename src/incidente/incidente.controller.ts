@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query,  HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, UsePipes,ValidationPipe ,Get, Post, Patch, Delete, Body, Param, Query,  HttpException, HttpStatus } from '@nestjs/common';
 import { CreateIncidenteDto } from './dto/create-incidente.dto';
 import { UpdateIncidenteDto } from './dto/update-incidente.dto';
 import { IncidenteService } from './incidente.service';
@@ -9,17 +9,30 @@ export class IncidenteController {
   constructor(private incidenteService: IncidenteService) {}
 
       @Post()
-        async create(@Body() createIncidenteDto: CreateIncidenteDto): Promise<Incidente> {
-          try {
-            return await this.incidenteService.createIncidente(createIncidenteDto);
-          } catch (error) {
-            throw new HttpException(
-              error.message || 'Error al crear el incidente',
-              HttpStatus.BAD_REQUEST
-            );
-          }
-        }
+      @UsePipes(new ValidationPipe({ transform: true }))
+      async create(@Body() createIncidenteDto: CreateIncidenteDto) {
+        return this.incidenteService.createIncidente(createIncidenteDto);
+      }
 
+      @Get('tecnicos')
+      async getTecnicos() {
+        return this.incidenteService.getTecnicoIncidentes();
+      }
+
+      @Get('analistas')
+      async getAnalistas() {
+        return this.incidenteService.getAnalistasIncidentes();
+      }
+
+      @Get('usuarios-disponibles')
+      async getUsuariosDisponibles() {
+        const [tecnicos, analistas] = await Promise.all([
+          this.incidenteService.getTecnicoIncidentes(),
+          this.incidenteService.getAnalistasIncidentes()
+        ]);
+        return { tecnicos, analistas };
+      }
+    
       @Get()
         async findAll(): Promise<Incidente[]> {
           try {
@@ -137,43 +150,6 @@ export class IncidenteController {
           );
         }
       }
-
-      @Get('filtros/buscar')
-      async findByFilters(
-        @Query('zona') zona?: string,
-        @Query('estado') estado?: string
-      ): Promise<Incidente[]> {
-        try {
-          // Si ambos parámetros están presentes
-          if (zona && estado) {
-            // Puedes implementar lógica combinada o devolver error
-            throw new HttpException('Use endpoints específicos por zona o estado', HttpStatus.BAD_REQUEST);
-          }
-          
-          // Si solo zona está presente
-          if (zona) {
-            return await this.findByZona(zona);
-          }
-          
-          // Si solo estado está presente
-          if (estado) {
-            return await this.findByEstado(estado);
-          }
-          
-          // Si no hay filtros, devolver todos
-          return await this.findAll();
-          
-        } catch (error) {
-          if (error instanceof HttpException) {
-            throw error;
-          }
-          throw new HttpException(
-            error.message || 'Error en la búsqueda por filtros',
-            HttpStatus.INTERNAL_SERVER_ERROR
-          );
-        }
-      }
-
       @Get('estadisticas/estadistics')
       async getEstadistics(): Promise<any> {
         try {

@@ -1,6 +1,6 @@
-import { PartialType } from '@nestjs/mapped-types';
-import { IsOptional, IsString, IsNumber, IsDate, IsBase64 } from 'class-validator';
+import { IsOptional, IsString, IsNumber, IsDate, IsBase64, IsArray, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
+import { CreateUsuarioIncidenteDto } from 'src/usuario_incidente/dto/create-usuario_incidente.dto';
 
 export class CreateIncidenteDto {
   @IsOptional()
@@ -34,4 +34,10 @@ export class CreateIncidenteDto {
   @IsOptional()
   @IsBase64()
   error_img?: string; 
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateUsuarioIncidenteDto)
+  asignaciones?: CreateUsuarioIncidenteDto[];
 }
