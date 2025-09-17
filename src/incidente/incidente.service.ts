@@ -183,10 +183,7 @@ export class IncidenteService {
                 estado: i.estado_acc_inc?.nombre_estado_acc_inc, 
               }));
       }
-      async updateIncidente(
-        no_incidente: string,
-        updateIncidenteDto: CreateIncidenteDto
-      ): Promise<Incidente> {
+      async updateIncidente(no_incidente: string, updateIncidenteDto: UpdateIncidenteDto): Promise<Incidente> {
         const queryRunner = this.incidenteRepository.manager.connection.createQueryRunner();
         await queryRunner.connect();
         await queryRunner.startTransaction();
