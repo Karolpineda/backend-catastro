@@ -14,6 +14,7 @@ import { VersionamientoModule } from './versionamiento/versionamiento.module';
 import { EstadoRequerimientoModule } from './estado_requerimiento/estado_requerimiento.module';
 import { IncidenteModule } from './incidente/incidente.module';
 import { UsuarioIncidenteModule } from './usuario_incidente/usuario_incidente.module';
+import { AccidenteModule } from './accidente/accidente.module';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { UsuarioIncidenteModule } from './usuario_incidente/usuario_incidente.mo
     EstadoRequerimientoModule,
     IncidenteModule,
     UsuarioIncidenteModule,
+    AccidenteModule,
   ],
   controllers: [],
 })
