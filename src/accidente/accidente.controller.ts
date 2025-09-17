@@ -56,9 +56,25 @@ export class AccidenteController {
     }
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateAccidenteDto: UpdateAccidenteDto) {
-    return this.accidenteService.update(+id, updateAccidenteDto);
+  @Patch('buscar/:identificador')
+  async updateByTramiteOrOficio(
+    @Param('identificador') identificador: string,
+    @Body() updateAccidenteDto: UpdateAccidenteDto,
+  ) {
+    try {
+      return await this.accidenteService.updateByTramiteOrOficio(
+        identificador,
+        updateAccidenteDto,
+      );
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        'Error al actualizar el accidente',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 
   @Delete(':tramite')

@@ -7,6 +7,7 @@ import { UpdateAccidenteDto } from './dto/update-accidente.dto';
 import { Estado_acc_inc } from 'src/estado_acc_inc/estado_acc_inc.entity';
 import { Rol_Usuario } from 'src/users_rol/entities/users_rol.entity';
 import { UsersRolService} from 'src/users_rol/users_rol.service'
+import { Zona } from 'src/zona/zona.entity'
 
 @Injectable()
 export class AccidenteService {
@@ -17,6 +18,8 @@ export class AccidenteService {
     private readonly estadoAccIncRepository: Repository<Estado_acc_inc>,
     @InjectRepository(Rol_Usuario) // Añadir esto
     private readonly rolUsuarioRepository: Repository<Rol_Usuario>,
+    @InjectRepository(Zona)
+    private readonly zonaRepository: Repository<Zona>,
     private readonly usersRolService: UsersRolService,
   ) {}
 
@@ -136,8 +139,151 @@ export class AccidenteService {
     }
   }
 
-  update(id: number, updateAccidenteDto: UpdateAccidenteDto) {
-    return `This action updates a #${id} accidente`;
+  async updateByTramiteOrOficio(
+    identificador: string,
+    updateAccidenteDto: UpdateAccidenteDto,
+  ) {
+    try {
+   
+      const accidente = await this.accidenteRepository.findOne({
+        where: [
+          { tramite_accidente: ILike(identificador) },
+          { oficio_memorando_mail: ILike(identificador) }
+        ],
+        relations: ['estadoAccInc', 'zona', 'rolUsuario'],
+      });
+
+      if (!accidente) {
+        throw new HttpException(
+          `Accidente con trámite/oficio "${identificador}" no encontrado`,
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      // Actualizar solo los campos que vienen en el DTO
+      Object.keys(updateAccidenteDto).forEach(key => {
+        if (updateAccidenteDto[key] !== undefined) {
+          accidente[key] = updateAccidenteDto[key];
+        }
+      });
+
+      // Si se actualizan relaciones, buscar las entidades correspondientes
+      if (updateAccidenteDto.id_estado_acc_inc !== undefined) {
+        const estado = await this.estadoAccIncRepository.findOne({
+          where: { id_estado_acc_inc: updateAccidenteDto.id_estado_acc_inc }
+        });
+        if (estado) {
+          accidente.estadoAccInc = estado;
+        }
+      }
+
+      if (updateAccidenteDto.id_zona !== undefined) {
+        const zona = await this.zonaRepository.findOne({
+          where: { id_zona: updateAccidenteDto.id_zona }
+        });
+        if (zona) {
+          accidente.zona = zona;
+        }
+      }
+
+      if (updateAccidenteDto.id_rol_usuario !== undefined) {
+        const rolUsuario = await this.rolUsuarioRepository.findOne({
+          where: { id_rol_usuario: updateAccidenteDto.id_rol_usuario }
+        });
+        if (rolUsuario) {
+          accidente.rolUsuario = rolUsuario;
+        }
+      }
+
+      const accidenteActualizado = await this.accidenteRepository.save(accidente);
+
+      return {
+        message: 'Accidente actualizado exitosamente',
+        data: accidenteActualizado,
+      };
+
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      
+      throw new HttpException(
+        `Error al actualizar el accidente: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  // Método alternativo usando Query Builder para mayor eficiencia
+  async updateByTramiteOrOficioV2(
+    identificador: string,
+    updateAccidenteDto: UpdateAccidenteDto,
+  ) {
+    try {
+      // Primero verificar que existe
+      const accidenteExistente = await this.accidenteRepository.findOne({
+        where: [
+          { tramite_accidente: ILike(identificador) },
+          { oficio_memorando_mail: ILike(identificador) }
+        ]
+      });
+
+      if (!accidenteExistente) {
+        throw new HttpException(
+          `Accidente con trámite/oficio "${identificador}" no encontrado`,
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      // Crear objeto de actualización sin campos undefined
+      const updateData: Partial<Accidente> = {};
+      Object.keys(updateAccidenteDto).forEach(key => {
+        if (updateAccidenteDto[key] !== undefined) {
+          updateData[key] = updateAccidenteDto[key];
+        }
+      });
+
+      // Actualizar usando Query Builder
+      const queryBuilder = this.accidenteRepository
+        .createQueryBuilder()
+        .update(Accidente)
+        .set(updateData)
+        .where('tramite_accidente ILike :identificador', { identificador })
+        .orWhere('oficio_memorando_mail ILike :identificador', { identificador });
+
+      const result = await queryBuilder.execute();
+
+      if (result.affected === 0) {
+        throw new HttpException(
+          'No se pudo actualizar el accidente',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+
+      // Obtener el accidente actualizado
+      const accidenteActualizado = await this.accidenteRepository.findOne({
+        where: [
+          { tramite_accidente: ILike(identificador) },
+          { oficio_memorando_mail: ILike(identificador) }
+        ],
+        relations: ['estadoAccInc', 'zona', 'rolUsuario'],
+      });
+
+      return {
+        message: 'Accidente actualizado exitosamente',
+        data: accidenteActualizado,
+      };
+
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      
+      throw new HttpException(
+        `Error al actualizar el accidente: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 
   async remove(tramite: string) {
@@ -154,7 +300,6 @@ export class AccidenteService {
         );
       }
 
-      // Eliminar el accidente
       const result = await this.accidenteRepository.delete(tramite);
 
       if (result.affected === 0) {
@@ -173,8 +318,7 @@ export class AccidenteService {
         throw error;
       }
 
-      // Manejar errores de restricciones de clave foránea
-      if (error.code === '23503') { // Código de error de PostgreSQL para violación de clave foránea
+      if (error.code === '23503') { 
         throw new HttpException(
           'No se puede eliminar el accidente porque tiene registros relacionados',
           HttpStatus.CONFLICT,
