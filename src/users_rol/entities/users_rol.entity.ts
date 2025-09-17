@@ -2,6 +2,7 @@ import { Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn, OneToMany } from
 import { Usuario } from '../../usuario/usuario.entity';
 import { Rol } from '../../rol/rol.entity';
 import { UsuarioIncidente } from 'src/usuario_incidente/entities/usuario_incidente.entity';
+import { Accidente } from 'src/accidente/entities/accidente.entity'
 
 
 @Entity()
@@ -19,4 +20,7 @@ export class Rol_Usuario {
 
   @OneToMany(() => UsuarioIncidente, usuarioIncidente => usuarioIncidente.rolUsuario)
   usuariosIncidente: UsuarioIncidente[];
+
+  @OneToMany(() => Accidente, (accidente) => accidente.rolUsuario)
+  accidentes: Accidente[];
 }

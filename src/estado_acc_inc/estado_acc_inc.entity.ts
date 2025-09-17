@@ -1,4 +1,5 @@
-import { Column, Entity,PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity,PrimaryGeneratedColumn, OneToMany } from "typeorm";
+import { Accidente } from 'src/accidente/entities/accidente.entity'
 
 @Entity()
 
@@ -12,5 +13,8 @@ export class Estado_acc_inc {
 
     @Column({nullable: true})
     descrip_estado_acc_inc: string
+
+    @OneToMany(() => Accidente, (accidente) => accidente.estadoAccInc)
+    accidentes: Accidente[];
 
 }

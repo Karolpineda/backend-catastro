@@ -1,4 +1,5 @@
-import { Column, Entity,PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity,PrimaryGeneratedColumn, OneToMany } from "typeorm";
+import { Accidente } from 'src/accidente/entities/accidente.entity'
 
 @Entity()
 
@@ -13,5 +14,8 @@ export class Zona {
 
     @Column({nullable: true})
     ubi_zona: string
+
+    @OneToMany(() => Accidente, (accidente) => accidente.zona)
+    accidentes: Accidente[];
 
 }
