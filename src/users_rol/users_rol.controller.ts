@@ -48,4 +48,9 @@ export class UsersRolController {
   async getAnalistas() {
     return await this.usersRolService.getTecnicoIncidentes();
   }
+
+  @Get('analistasAccidentes')
+  async getAnalistasAccidentes() {
+    return await this.usersRolService.getAnalistasAccidentes();
+  }
 }

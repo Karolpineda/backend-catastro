@@ -147,5 +147,21 @@ async getAnalistasIncidentes(): Promise<{ nombre_completo: string }[]> {
     nombre_completo: `${ru.usuario.nombre_usuario} ${ru.usuario.apellidos_usuario}`,
   }));
 }
+async getAnalistasAccidentes(): Promise<{ nombre_completo: string }[]> {
+  const usuarios = await this.userRolRepository.find({
+    where: { rol: { id_rol: 6 } }, 
+    relations: ['usuario'],
+    select: {
+      usuario: {
+        nombre_usuario: true,
+        apellidos_usuario: true,
+      },
+    },
+  });
+
+  return usuarios.map(ru => ({
+    nombre_completo: `${ru.usuario.nombre_usuario} ${ru.usuario.apellidos_usuario}`,
+  }));
+}
 
 }
