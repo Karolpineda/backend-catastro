@@ -15,6 +15,9 @@ import { EstadoRequerimientoModule } from './estado_requerimiento/estado_requeri
 import { IncidenteModule } from './incidente/incidente.module';
 import { UsuarioIncidenteModule } from './usuario_incidente/usuario_incidente.module';
 import { AccidenteModule } from './accidente/accidente.module';
+import { RequerimientoModule } from './requerimiento/requerimiento.module';
+import { SireqExternoModule } from './sireq_externo/sireq_externo.module';
+import { SireqInternoModule } from './sireq_interno/sireq_interno.module';
 
 @Module({
   imports: [
@@ -48,6 +51,9 @@ import { AccidenteModule } from './accidente/accidente.module';
     IncidenteModule,
     UsuarioIncidenteModule,
     AccidenteModule,
+    RequerimientoModule,
+    SireqExternoModule,
+    SireqInternoModule,
   ],
   controllers: [],
 })

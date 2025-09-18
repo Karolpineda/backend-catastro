@@ -1,6 +1,6 @@
-import { Controller, UsePipes,ValidationPipe ,Get, Post, Patch, Delete, Body, Param, Query,  HttpException, HttpStatus,UseGuards,  } from '@nestjs/common';
+import { Controller, UsePipes,ValidationPipe ,Get, Post, Patch, Delete, Body, Param, Query,  HttpException, HttpStatus,UseGuards, NotFoundException,  } from '@nestjs/common';
 import { CreateIncidenteDto } from './dto/create-incidente.dto';
-import { UpdateIncidenteDto } from './dto/update-incidente.dto';
+import { UpdateIncidenteEstadoDto } from './dto/update-incidente-estado.dto';
 import { IncidenteService } from './incidente.service';
 import { Incidente } from './entities/incidente.entity';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -161,4 +161,36 @@ export class IncidenteController {
           );
         }
       }
+
+
+       @Patch('estado/:no_incidente')
+  async updateEstado(
+    @Param('no_incidente') no_incidente: string,
+    @Body() updateIncidenteEstadoDto: UpdateIncidenteEstadoDto,
+  ) {
+    try {
+      const incidenteActualizado = await this.incidenteService.updateEstado(
+        no_incidente,
+        updateIncidenteEstadoDto,
+      );
+      
+      return {
+        message: 'Estado del incidente actualizado exitosamente',
+        data: incidenteActualizado,
+      };
+      
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      
+      throw new HttpException(
+        'Error interno del servidor al actualizar el estado del incidente',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 }

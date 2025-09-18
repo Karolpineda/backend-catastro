@@ -12,7 +12,7 @@ import { Zona } from 'src/zona/zona.entity';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Accidente, Estado_acc_inc, Rol_Usuario, Zona]),
-    UsersRolModule, // Importar el módulo aquí
+    UsersRolModule, 
   ],
   controllers: [AccidenteController],
   providers: [AccidenteService],
