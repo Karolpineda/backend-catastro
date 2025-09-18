@@ -54,5 +54,13 @@ export class RolService {
 
     }
 
+    async getRolById(id_rol: number) {
+        const rolFound = await this.rolRepository.findOne({ where: { id_rol } });
+        if (!rolFound) {
+            return new HttpException('Rol no existe', HttpStatus.NOT_FOUND);
+        } else {
+            return rolFound;
+        }
+    }
 
 }

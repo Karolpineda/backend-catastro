@@ -77,4 +77,13 @@ export class UsuarioService {
             return this.usuarioRepository.delete({ cedula_usuario: cedula_usuario });
         }
     }
+
+    async getUsuarioById(id_usuario: number) {
+        const usuarioFound = await this.usuarioRepository.findOne({ where: { id_usuario } });
+        if (!usuarioFound) {
+            return new HttpException('Usuario no encontrado', HttpStatus.NOT_FOUND);
+        } else {
+            return usuarioFound;
+        }
+    }
 }

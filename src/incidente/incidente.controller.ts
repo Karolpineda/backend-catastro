@@ -1,10 +1,14 @@
-import { Controller, UsePipes,ValidationPipe ,Get, Post, Patch, Delete, Body, Param, Query,  HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, UsePipes,ValidationPipe ,Get, Post, Patch, Delete, Body, Param, Query,  HttpException, HttpStatus,UseGuards,  } from '@nestjs/common';
 import { CreateIncidenteDto } from './dto/create-incidente.dto';
 import { UpdateIncidenteDto } from './dto/update-incidente.dto';
 import { IncidenteService } from './incidente.service';
 import { Incidente } from './entities/incidente.entity';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('incidentes')
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class IncidenteController {
   constructor(private incidenteService: IncidenteService) {}
 
@@ -34,16 +38,24 @@ export class IncidenteController {
       }
     
       @Get()
-        async findAll(): Promise<Incidente[]> {
-          try {
-            return await this.incidenteService.findAllIncidente();
-          } catch (error) {
-            throw new HttpException(
-              error.message || 'Error al obtener los incidentes',
-              HttpStatus.INTERNAL_SERVER_ERROR
-            );
-          }
+      @Roles('Administrador')
+      async findAll(): Promise<Incidente[]> {
+        try {
+          console.log('Llamada a findAllIncidente');
+          
+          const result = await this.incidenteService.findAllIncidente();
+          console.log('Resultado del servicio:', result); // ✅ Ahora sí verás los datos
+          console.log('Cantidad de incidentes:', result.length);
+          
+          return result;
+        } catch (error) {
+          console.error('Error en findAll:', error);
+          throw new HttpException(
+            error.message || 'Error al obtener los incidentes',
+            HttpStatus.INTERNAL_SERVER_ERROR
+          );
         }
+      }
 
       @Get('view')
         async getViewIncidente(): Promise<any[]> {

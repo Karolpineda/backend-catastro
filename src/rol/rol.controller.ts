@@ -21,6 +21,11 @@ export class RolController {
             getCedulaUsuario(@Param('nombre_rol') nombre_rol: string){
             return this.rolService.getNombreRol(nombre_rol);
         }
+
+        @Get('id/:id_rol')
+        getRolById(@Param('id_rol', ParseIntPipe) id_rol: number) {
+            return this.rolService.getRolById(id_rol);
+        }
         @Delete(':nombre_rol')
             deleteZona(@Param('nombre_rol') nombre_rol:string) {
             return this.rolService.deleteRol(nombre_rol)

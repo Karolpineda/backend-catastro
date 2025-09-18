@@ -22,6 +22,12 @@ export class UsuarioController {
         getCedulaUsuario(@Param('cedula_usuario') cedula_usuario: string){
         return this.usuarioService.getCedulaUsuario(cedula_usuario);
     }
+
+    @Get('id/:id_usuario')
+    getUsuarioById(@Param('id_usuario', ParseIntPipe) id_usuario: number) {
+        return this.usuarioService.getUsuarioById(id_usuario);
+    }
+
     @Delete(':cedula_usuario')
         deleteZona(@Param('cedula_usuario') cedula_usuario:string) {
         return this.usuarioService.deleteUsuario(cedula_usuario)

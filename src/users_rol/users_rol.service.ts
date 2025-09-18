@@ -69,9 +69,22 @@ export class UsersRolService {
     });
   }
 
-  async findOne(id: number) {
+  async findOne(id: number | string) {
+    // Debug: log para ver qué está llegando
+    console.log('findOne recibió:', id, 'tipo:', typeof id);
+    
+    // Validar que el ID sea un número válido
+    const parsedId = Number(id);
+    
+    if (isNaN(parsedId) || parsedId <= 0 || !Number.isInteger(parsedId)) {
+      throw new HttpException(
+        `ID inválido: '${id}' no es un número entero válido`, 
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
     const userRol = await this.userRolRepository.findOne({
-      where: { id_rol_usuario: id },
+      where: { id_rol_usuario: parsedId },
       relations: ['usuario', 'rol'],
     });
 
@@ -83,26 +96,47 @@ export class UsersRolService {
   }
 
   async findByUser(userId: number) {
+    // Validar que el ID sea un número válido
+    const parsedUserId = Number(userId);
+    
+    if (isNaN(parsedUserId) || parsedUserId <= 0) {
+      throw new HttpException('ID de usuario inválido', HttpStatus.BAD_REQUEST);
+    }
+
     return await this.userRolRepository
       .createQueryBuilder('userRol')
       .innerJoinAndSelect('userRol.usuario', 'usuario')
       .innerJoinAndSelect('userRol.rol', 'rol')
-      .where('usuario.id_usuario = :userId', { userId })
+      .where('usuario.id_usuario = :userId', { userId: parsedUserId })
       .getMany();
   }
 
   async findByRol(rolId: number) {
+    // Validar que el ID sea un número válido
+    const parsedRolId = Number(rolId);
+    
+    if (isNaN(parsedRolId) || parsedRolId <= 0) {
+      throw new HttpException('ID de rol inválido', HttpStatus.BAD_REQUEST);
+    }
+
     return await this.userRolRepository
       .createQueryBuilder('userRol')
       .innerJoinAndSelect('userRol.usuario', 'usuario')
       .innerJoinAndSelect('userRol.rol', 'rol')
-      .where('rol.id_rol = :rolId', { rolId })
+      .where('rol.id_rol = :rolId', { rolId: parsedRolId })
       .getMany();
   }
 
   async remove(id: number) {
+    // Validar que el ID sea un número válido
+    const parsedId = Number(id);
+    
+    if (isNaN(parsedId) || parsedId <= 0) {
+      throw new HttpException('ID inválido', HttpStatus.BAD_REQUEST);
+    }
+
     const userRol = await this.userRolRepository.findOne({
-      where: { id_rol_usuario: id },
+      where: { id_rol_usuario: parsedId },
     });
 
     if (!userRol) {
@@ -112,56 +146,88 @@ export class UsersRolService {
     await this.userRolRepository.remove(userRol);
     return { message: 'Asignación eliminada correctamente' };
   }
-  // Método para traer al responsable
-async getTecnicoIncidentes(): Promise<{ nombre_completo: string }[]> {
-  const usuarios = await this.userRolRepository.find({
-    where: { rol: { id_rol: 7 } }, 
-    relations: ['usuario'],
-    select: {
-      usuario: {
-        nombre_usuario: true,
-        apellidos_usuario: true,
-      },
-    },
-  });
 
-  return usuarios.map(ru => ({
-    nombre_completo: `${ru.usuario.nombre_usuario} ${ru.usuario.apellidos_usuario}`,
-  }));
-}
+  // Método para traer al técnico de incidentes (responsable)
+  async getTecnicoIncidentes(): Promise<{ id_usuario: number; nombre_completo: string }[]> {
+    try {
+      const usuarios = await this.userRolRepository.find({
+        where: { rol: { id_rol: 7 } }, 
+        relations: ['usuario'],
+        select: {
+          id_rol_usuario: true,
+          usuario: {
+            id_usuario: true,
+            nombre_usuario: true,
+            apellidos_usuario: true,
+          },
+        },
+      });
 
-// Método para traer a los analistas
-async getAnalistasIncidentes(): Promise<{ nombre_completo: string }[]> {
-  const usuarios = await this.userRolRepository.find({
-    where: { rol: { id_rol: 2 } }, 
-    relations: ['usuario'],
-    select: {
-      usuario: {
-        nombre_usuario: true,
-        apellidos_usuario: true,
-      },
-    },
-  });
+      return usuarios.map(ru => ({
+        id_usuario: ru.usuario.id_usuario,
+        nombre_completo: `${ru.usuario.nombre_usuario} ${ru.usuario.apellidos_usuario}`,
+      }));
+    } catch (error) {
+      throw new HttpException(
+        'Error al obtener técnicos de incidentes',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 
-  return usuarios.map(ru => ({
-    nombre_completo: `${ru.usuario.nombre_usuario} ${ru.usuario.apellidos_usuario}`,
-  }));
-}
-async getAnalistasAccidentes(): Promise<{ nombre_completo: string }[]> {
-  const usuarios = await this.userRolRepository.find({
-    where: { rol: { id_rol: 6 } }, 
-    relations: ['usuario'],
-    select: {
-      usuario: {
-        nombre_usuario: true,
-        apellidos_usuario: true,
-      },
-    },
-  });
+  // Método para traer a los analistas de incidentes
+  async getAnalistasIncidentes(): Promise<{ id_usuario: number; nombre_completo: string }[]> {
+    try {
+      const usuarios = await this.userRolRepository.find({
+        where: { rol: { id_rol: 2 } }, 
+        relations: ['usuario'],
+        select: {
+          id_rol_usuario: true,
+          usuario: {
+            id_usuario: true,
+            nombre_usuario: true,
+            apellidos_usuario: true,
+          },
+        },
+      });
 
-  return usuarios.map(ru => ({
-    nombre_completo: `${ru.usuario.nombre_usuario} ${ru.usuario.apellidos_usuario}`,
-  }));
-}
+      return usuarios.map(ru => ({
+        id_usuario: ru.usuario.id_usuario,
+        nombre_completo: `${ru.usuario.nombre_usuario} ${ru.usuario.apellidos_usuario}`,
+      }));
+    } catch (error) {
+      throw new HttpException(
+        'Error al obtener analistas de incidentes',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 
+  // Método para traer a los analistas de accidentes
+  async getAnalistasAccidentes(): Promise<{ id_usuario: number; nombre_completo: string }[]> {
+    try {
+      const usuarios = await this.userRolRepository.find({
+        where: { rol: { id_rol: 6 } }, 
+        relations: ['usuario'],
+        select: {
+          id_rol_usuario: true,
+          usuario: {
+            id_usuario: true,
+            nombre_usuario: true,
+            apellidos_usuario: true,
+          },
+        },
+      });
+
+      return usuarios.map(ru => ({
+        id_usuario: ru.usuario.id_usuario,
+        nombre_completo: `${ru.usuario.nombre_usuario} ${ru.usuario.apellidos_usuario}`,
+      }));
+    } catch (error) {
+      throw new HttpException(
+        'Error al obtener analistas de accidentes',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 }

@@ -2,9 +2,11 @@ import { Controller,Get,Post,Body,Param,Delete,UseGuards, ParseIntPipe} from '@n
 import { UsersRolService } from './users_rol.service';
 import { CreateUsersRolDto } from './dto/create-users_rol.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RolesGuard } from '../auth/guards/roles.guard';
 
 @Controller('users-rol')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class UsersRolController {
   constructor(private readonly usersRolService: UsersRolService) {}
 
@@ -18,39 +20,45 @@ export class UsersRolController {
     return this.usersRolService.findAll();
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-  return this.usersRolService.findOne(Number(id));
-  }
-
-  @Get('usuario/:userId')
-  findByUser(@Param('userId', ParseIntPipe) userId: number) {
-    return this.usersRolService.findByUser(userId);
-  }
-
-  @Get('rol/:rolId')
-  findByRol(@Param('rolId') rolId: number) {
-    return this.usersRolService.findByRol(rolId);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: number) {
-    return this.usersRolService.remove(id);
-  }
-
+  // ✅ RUTAS ESPECÍFICAS PRIMERO - antes que @Get(':id')
   @Get('tecIncidente')
+  @Roles('Administrador')
   async getResponsable() {
     return await this.usersRolService.getTecnicoIncidentes();
   }
 
-  // Endpoint para obtener analistas
   @Get('analistas')
+  @Roles('Administrador')
   async getAnalistas() {
-    return await this.usersRolService.getTecnicoIncidentes();
+    return await this.usersRolService.getAnalistasIncidentes();
   }
 
   @Get('analistasAccidentes')
   async getAnalistasAccidentes() {
     return await this.usersRolService.getAnalistasAccidentes();
+  }
+
+  // ✅ Rutas con parámetros en el medio de la URL
+  @Get('usuario/:userId')
+
+  findByUser(@Param('userId', ParseIntPipe) userId: number) {
+    return this.usersRolService.findByUser(userId);
+  }
+
+  @Get('rol/:rolId')
+  @Roles('Administrador')
+  findByRol(@Param('rolId', ParseIntPipe) rolId: number) {
+    return this.usersRolService.findByRol(rolId);
+  }
+
+  // ✅ RUTAS PARAMETRIZADAS AL FINAL - después de las rutas específicas
+  @Get(':id')
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.usersRolService.findOne(id);
+  }
+
+  @Delete(':id')
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.usersRolService.remove(id);
   }
 }

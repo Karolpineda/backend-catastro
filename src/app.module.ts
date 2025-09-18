@@ -30,7 +30,7 @@ import { AccidenteModule } from './accidente/accidente.module';
         password: config.get('DB_PASSWORD'),
         database: config.get('DB_DATABASE'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: true,
+        synchronize: false,
         migrations: [__dirname + '/migrations/*{.ts,.js}'],
       }),
     }),
