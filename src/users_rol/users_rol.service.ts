@@ -207,7 +207,7 @@ export class UsersRolService {
   async getAnalistasAccidentes(): Promise<{ id_usuario: number; nombre_completo: string }[]> {
     try {
       const usuarios = await this.userRolRepository.find({
-        where: { rol: { id_rol: 6 } }, 
+        where: { rol: { id_rol: 6 } },
         relations: ['usuario'],
         select: {
           id_rol_usuario: true,
@@ -226,6 +226,39 @@ export class UsersRolService {
     } catch (error) {
       throw new HttpException(
         'Error al obtener analistas de accidentes',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  // Método para obtener el rol del usuario por id_usuario
+  async getRolByUsuarioId(id_usuario: number): Promise<{ id_rol: number; nombre_rol: string }> {
+    try {
+      const userRol = await this.userRolRepository.findOne({
+        where: { usuario: { id_usuario: id_usuario } },
+        relations: ['rol'],
+        select: {
+          rol: {
+            id_rol: true,
+            nombre_rol: true,
+          },
+        },
+      });
+
+      if (!userRol) {
+        throw new HttpException('Usuario no encontrado o sin rol asignado', HttpStatus.NOT_FOUND);
+      }
+
+      return {
+        id_rol: userRol.rol.id_rol,
+        nombre_rol: userRol.rol.nombre_rol,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        'Error al obtener el rol del usuario',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

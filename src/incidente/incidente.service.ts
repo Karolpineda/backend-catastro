@@ -160,17 +160,107 @@ export class IncidenteService {
           );
         }
       }
-      async findNoIncidente(no_incidente: string): Promise<Incidente> {
-        const incidente = await this.incidenteRepository.findOne({
-            where: { no_incidente: no_incidente },
-            relations: ['zona', 'estado_acc_inc'],
-          });
+     
 
-          if (!incidente) {
-            throw new HttpException('Incidente ${no_incidente} no encontrado', HttpStatus.NOT_FOUND);
+
+// Método para obtener incidente con usuario responsable (técnico) y analista
+        async findNoIncidente(id_incidente: number): Promise<any> {
+          try {
+            const incidente = await this.incidenteRepository.findOne({
+              where: { id_incidente },
+              relations: [
+                'zona',
+                'estado_acc_inc',
+                // relaciones necesarias para traer los usuarios asociados y sus roles
+                'usuariosIncidente',
+                'usuariosIncidente.rolUsuario',
+                'usuariosIncidente.rolUsuario.usuario',
+                'usuariosIncidente.rolUsuario.rol',
+              ],
+            });
+
+            if (!incidente) {
+              throw new HttpException(`Incidente ${id_incidente} no encontrado`, HttpStatus.NOT_FOUND);
+            }
+
+            // Normalizar y mapear las asignaciones / usuarios relacionados
+            const asignaciones = (incidente.usuariosIncidente || []).map((ui) => {
+              const rolUsuario = ui.rolUsuario || null;
+              const usuario = rolUsuario?.usuario || null;
+              const rol = rolUsuario?.rol || null;
+
+              return {
+                // id del registro usuario_incidente (si existe en tu entidad)
+                id_usuario_incidente: (ui as any).id_usuario_incidente ?? null,
+                // id del rol_usuario (tabla rol_usuario)
+                id_rol_usuario: rolUsuario?.id_rol_usuario ?? null,
+                // datos del usuario
+                id_usuario: usuario?.id_usuario ?? null,
+                nombre_usuario: usuario?.nombre_usuario ?? null,
+                apellidos_usuario: usuario?.apellidos_usuario ?? null,
+                correo_usuario: usuario?.correo_usuario ?? null,
+                // datos del rol
+                id_rol: rol?.id_rol ?? null,
+                nombre_rol: rol?.nombre_rol ?? null,
+              };
+            });
+
+            // Heurística para identificar técnico / analista por nombre de rol
+            const matchRole = (roleName?: string, rx?: RegExp) =>
+              !!(roleName && rx && rx.test(roleName));
+
+            const tecnico = asignaciones.find((a) =>
+              matchRole(a.nombre_rol, /\bT[EÉ]CNICO\b/i) || matchRole(a.nombre_rol, /\bTECNICO\b/i)
+            ) || null;
+
+            const analista = asignaciones.find((a) =>
+              matchRole(a.nombre_rol, /\bANALISTA\b/i)
+            ) || null;
+
+            // Construir payload limpio que el frontend puede mapear fácilmente
+            const payload = {
+              id_incidente: incidente.id_incidente,
+              no_incidente: incidente.no_incidente,
+              fechaingresoerror: incidente.fechaingresoerror,
+              fech_solucion: incidente.fech_solucion,
+              descripcionerror: incidente.descripcionerror,
+              añosirecq: incidente.añosirecq,
+              mensajeerror: incidente.mensajeerror,
+              tipologia: incidente.tipologia,
+              obs_incidente: incidente.obs_incidente,
+              // zona y estado (estructura plana)
+              zona: incidente.zona
+                ? {
+                    id_zona: incidente.zona.id_zona,
+                    nombre_zona: incidente.zona.nombre_zona,
+                    ubi_zona: incidente.zona.ubi_zona,
+                  }
+                : null,
+              estado_acc_inc: incidente.estado_acc_inc
+                ? {
+                    id_estado_acc_inc: incidente.estado_acc_inc.id_estado_acc_inc,
+                    nombre_estado_acc_inc: incidente.estado_acc_inc.nombre_estado_acc_inc,
+                    descrip_estado_acc_inc: incidente.estado_acc_inc.descrip_estado_acc_inc,
+                  }
+                : null,
+              tecnico: tecnico,   // objeto null o datos del tecnico (id_usuario, nombre_usuario, id_rol, nombre_rol, etc.)
+              analista: analista, // objeto null o datos del analista
+              // si quieres incluir la imagen (buffer) en bruto, puede venir aquí:
+              error_img: incidente.error_img ?? null,
+              // mantengo el raw del incidente por si necesitas más campos en front
+              _rawIncidente: incidente,
+            };
+
+            return payload;
+          } catch (error) {
+            if (error instanceof HttpException) throw error;
+            throw new HttpException(
+              error.message || 'Error al obtener el incidente con usuarios',
+              HttpStatus.INTERNAL_SERVER_ERROR
+            );
           }
-          return incidente;
-      }
+        }
+
       async getViewIncidente(): Promise<any[]> {
             const incidentes = await this.incidenteRepository.find({
                 relations: ['estado_acc_inc'], 
@@ -183,7 +273,7 @@ export class IncidenteService {
                 estado: i.estado_acc_inc?.nombre_estado_acc_inc, 
               }));
       }
-      async updateIncidente(no_incidente: string, updateIncidenteDto: UpdateIncidenteDto): Promise<Incidente> {
+      async updateIncidente(id_incidente: number, updateIncidenteDto: UpdateIncidenteDto): Promise<Incidente> {
         const queryRunner = this.incidenteRepository.manager.connection.createQueryRunner();
         await queryRunner.connect();
         await queryRunner.startTransaction();
@@ -191,10 +281,10 @@ export class IncidenteService {
         try {
           // 1. VALIDAR QUE EL INCIDENTE EXISTA Y OBTENER EL ID
           const incidente = await this.incidenteRepository.findOne({
-            where: { no_incidente },
+            where: { id_incidente },
             relations: ['zona', 'estado_acc_inc', 'usuariosIncidente'],
           });
-          if (!incidente) throw new NotFoundException(`Incidente ${no_incidente} no encontrado`);
+          if (!incidente) throw new NotFoundException(`Incidente ${id_incidente} no encontrado`);
 
           // VERIFICACIÓN CRÍTICA: Asegurar que tenemos el ID del incidente
           if (!incidente.id_incidente) {
@@ -325,9 +415,9 @@ export class IncidenteService {
           await queryRunner.release();
         }
       }
-      async remove(no_incidente: string): Promise<void> {
+      async remove(id_incidente: number): Promise<void> {
         try {
-          const incidente = await this.findNoIncidente(no_incidente);
+          const incidente = await this.findNoIncidente(id_incidente);
           await this.incidenteRepository.remove(incidente);
         } catch (error) {
           if (error instanceof NotFoundException) {

@@ -69,10 +69,10 @@ export class IncidenteController {
           }
         }
 
-      @Get(':no_incidente')
-        async findOne(@Param('no_incidente') no_incidente: string): Promise<Incidente> {
+      @Get(':id_incidente')
+        async findOne(@Param('id_incidente') id_incidente: number): Promise<Incidente> {
           try {
-            const incidente = await this.incidenteService.findNoIncidente(no_incidente);
+            const incidente = await this.incidenteService.findNoIncidente(id_incidente);
             if (!incidente) {
               throw new HttpException('Incidente no encontrado', HttpStatus.NOT_FOUND);
             }
@@ -88,20 +88,20 @@ export class IncidenteController {
           }
         }
 
-      @Patch(':no_incidente')
+      @Patch(':id_incidente')
         async update(
-          @Param('no_incidente') no_incidente: string,
+          @Param('id_incidente') id_incidente: number,
           @Body() updateIncidenteDto: CreateIncidenteDto
         ): Promise<Incidente> {
-          return this.incidenteService.updateIncidente(no_incidente, updateIncidenteDto);
+          return this.incidenteService.updateIncidente(id_incidente, updateIncidenteDto);
         }
 
 
 
-      @Delete(':no_incidente')
-      async remove(@Param('no_incidente') no_incidente: string): Promise<void> {
+      @Delete(':id_incidente')
+      async remove(@Param('id_incidente') id_incidente: number): Promise<void> {
         try {
-          await this.incidenteService.remove(no_incidente);
+          await this.incidenteService.remove(id_incidente);
         } catch (error) {
           if (error instanceof HttpException) {
             throw error;
