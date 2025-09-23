@@ -1,6 +1,6 @@
 // create-accidente.dto.ts
-import { IsOptional, IsString, IsDate, IsNumber, IsBoolean } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsNotEmpty, IsOptional, IsString, IsDateString, IsBoolean, IsInt } from 'class-validator';
+
 
 export class CreateAccidenteDto {
   @IsOptional()
@@ -8,28 +8,67 @@ export class CreateAccidenteDto {
   tramite_accidente?: string;
 
   @IsOptional()
-  @IsNumber()
-  id_rol_usuario: number;
-
-  @IsOptional()
   @IsString()
   oficio_memorando_mail?: string;
 
-  @IsOptional()
-  @Type(() => Date)
-  @IsDate()
-  fech_ingr_tramite?: Date;
+  @IsNotEmpty()
+  @IsDateString()
+  fech_ingr_tramite: Date;
 
-  @IsOptional()
-  @Type(() => Date)
-  @IsDate()
-  fecha_asignacion?: Date;
+  @IsNotEmpty()
+  @IsDateString()
+  fecha_asignacion: Date;
 
-  @IsOptional()
-  @IsNumber()
-  tipologia?: number;
+  @IsNotEmpty()
+  @IsInt()
+  tipologia: number;
 
-  @IsOptional()
+  @IsNotEmpty()
   @IsBoolean()
-  inspection?: boolean;
+  inspeccion: boolean;
+
+  @IsNotEmpty()
+  @IsString()
+  predio: string;
+
+  @IsNotEmpty()
+  @IsString()
+  clave_catastral: string;
+
+  @IsNotEmpty()
+  @IsString()
+  nom_propietario: string;
+
+  @IsNotEmpty()
+  @IsInt()
+  id_estado_acc_inc: number;
+
+  // Otros campos opcionales
+  @IsOptional()
+  @IsString()
+  documento?: string;
+
+  @IsOptional()
+  @IsString()
+  cod_consulta?: string;
+
+  @IsOptional()
+  @IsString()
+  control_calidad?: string;
+
+  @IsOptional()
+  @IsString()
+  numero_interno?: string;
+
+  @IsOptional()
+  @IsString()
+  observaciones?: string;
+
+  @IsOptional()
+  @IsInt()
+  id_zona?: number;
+
+  @IsOptional()
+  @IsInt()
+  id_rol_usuario?: number;
 }

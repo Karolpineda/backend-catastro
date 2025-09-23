@@ -41,10 +41,10 @@ export class AccidenteController {
     }
   }
 
-  @Get('tramite/:tramite')
-  async findOneByTramite(@Param('tramite') tramite: string) {
+  @Get('id_accidente/:id_accidente')
+  async findOneByTramite(@Param('tramite') id_accidente: number) {
     try {
-      return await this.accidenteService.findOneByTramite(tramite);
+      return await this.accidenteService.findOneByTramite(id_accidente);
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -77,10 +77,10 @@ export class AccidenteController {
     }
   }
 
-  @Delete(':tramite')
-  async remove(@Param('tramite') tramite: string) {
+  @Delete(':id_accidente')
+  async remove(@Param('tramite') id_accidente: number) {
     try {
-      return await this.accidenteService.remove(tramite);
+      return await this.accidenteService.remove(id_accidente);
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;

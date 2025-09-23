@@ -1,8 +1,8 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
-import { CreateAccidenteDto } from './dto/create-accidente.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like, ILike } from 'typeorm';
+import { Repository, Not, DataSource, ILike } from 'typeorm';
 import { Accidente } from './entities/accidente.entity';
+import { CreateAccidenteDto } from './dto/create-accidente.dto';
 import { UpdateAccidenteDto } from './dto/update-accidente.dto';
 import { Estado_acc_inc } from 'src/estado_acc_inc/estado_acc_inc.entity';
 import { Rol_Usuario } from 'src/users_rol/entities/users_rol.entity';
@@ -23,51 +23,44 @@ export class AccidenteService {
     private readonly usersRolService: UsersRolService,
   ) {}
 
-  async createAccidente(createAccidenteDto: CreateAccidenteDto) {
-  try {
-    const estadoIngresado = await this.estadoAccIncRepository.findOne({
-      where: { nombre_estado_acc_inc: 'INGRESADO' }
-    });
-
-    if (!estadoIngresado) {
-      throw new HttpException('Estado "Ingresado" no encontrado en el sistema', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-    const rolUsuario = await this.rolUsuarioRepository.findOne({
-      where: { id_rol_usuario: createAccidenteDto.id_rol_usuario }
-    });
-
-    if (!rolUsuario) {
-      throw new HttpException('El técnico especificado no existe', HttpStatus.BAD_REQUEST);
+  async createAccidente(createAccidenteDto: CreateAccidenteDto): Promise<Accidente> {
+    // Validar que trámite o oficio esté presente
+    if (!createAccidenteDto.tramite_accidente && !createAccidenteDto.oficio_memorando_mail) {
+      throw new HttpException(
+        'Debe ingresar trámite o número de oficio/memorando/mail',
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
+    // Validar estado (no debe ser "Favorable")
+    const estado = await this.estadoAccIncRepository.findOne({
+      where: {
+        id_estado_acc_inc: createAccidenteDto.id_estado_acc_inc,
+        nombre_estado_acc_inc: Not('Favorable'),
+      },
+    });
+    if (!estado) {
+      throw new HttpException(
+        'El estado seleccionado no es válido o es "Favorable"',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Crear el accidente
     const accidente = this.accidenteRepository.create({
-      tramite_accidente: createAccidenteDto.tramite_accidente,
-      oficio_memorando_mail: createAccidenteDto.oficio_memorando_mail,
-      fech_ingr_tramite: createAccidenteDto.fech_ingr_tramite || new Date(),
-      fecha_asignacion: createAccidenteDto.fecha_asignacion,
-      tipologia: createAccidenteDto.tipologia,
-      rolUsuario: rolUsuario, 
-      estadoAccInc: estadoIngresado, 
+      ...createAccidenteDto,
+      estadoAccInc: estado,
     });
 
-    const savedAccidente = await this.accidenteRepository.save(accidente);
-
-    return {
-      message: 'Accidente creado exitosamente',
-      data: savedAccidente,
-    };
-
-  } catch (error) {
-    if (error instanceof HttpException) {
-      throw error;
-    }
-    
-    throw new HttpException(
-      `Error al crear el accidente: ${error.message}`,
-      HttpStatus.INTERNAL_SERVER_ERROR,
-    );
+    return this.accidenteRepository.save(accidente);
   }
-}
+
+  // Obtener todos los estados menos el "Favorable"
+  async getEstadosNoFavorable(): Promise<Estado_acc_inc[]> {
+    return this.estadoAccIncRepository.find({
+      where: { nombre_estado_acc_inc: Not('FAVORABLE') },
+    });
+  }
 
   async getAnalistasAccidentes() {
     return await this.usersRolService.getAnalistasAccidentes();
@@ -113,16 +106,16 @@ export class AccidenteService {
     }
   }
 
-  async findOneByTramite(tramite: string) {
+  async findOneByTramite(id_accidente: number) {
     try {
       const accidente = await this.accidenteRepository.findOne({
-        where: { tramite_accidente: ILike(tramite) },
+        where: { id_accidente: ILike(id_accidente) },
         relations: ['estadoAccInc', 'rolUsuario', 'zona'],
       });
 
       if (!accidente) {
         throw new HttpException(
-          `Accidente con trámite ${tramite} no encontrado`,
+          `Accidente con trámite ${id_accidente} no encontrado`,
           HttpStatus.NOT_FOUND,
         );
       }
@@ -140,167 +133,105 @@ export class AccidenteService {
   }
 
   async updateByTramiteOrOficio(
-    identificador: string,
-    updateAccidenteDto: UpdateAccidenteDto,
-  ) {
+  identificador: string,
+  updateAccidenteDto: UpdateAccidenteDto,
+) {
+  try {
+    const accidente = await this.accidenteRepository.findOne({
+      where: [
+        { tramite_accidente: ILike(identificador) },
+        { oficio_memorando_mail: ILike(identificador) }
+      ],
+      relations: ['estadoAccInc', 'zona', 'rolUsuario'],
+    });
+
+    if (!accidente) {
+      throw new HttpException(
+        `Accidente con trámite/oficio "${identificador}" no encontrado`,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    // Validación: No permitir actualización si el estado es CANCELADO
+    if (
+      accidente.estadoAccInc &&
+      accidente.estadoAccInc.nombre_estado_acc_inc &&
+      accidente.estadoAccInc.nombre_estado_acc_inc.toUpperCase() === 'CANCELADO'
+    ) {
+      throw new HttpException(
+        'No se puede actualizar un accidente con estado CANCELADO',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    // Actualizar solo los campos que vienen en el DTO
+    Object.keys(updateAccidenteDto).forEach(key => {
+      if (updateAccidenteDto[key] !== undefined) {
+        accidente[key] = updateAccidenteDto[key];
+      }
+    });
+
+    // Si se actualizan relaciones, buscar las entidades correspondientes
+    if (updateAccidenteDto.id_estado_acc_inc !== undefined) {
+      const estado = await this.estadoAccIncRepository.findOne({
+        where: { id_estado_acc_inc: updateAccidenteDto.id_estado_acc_inc }
+      });
+      if (estado) {
+        accidente.estadoAccInc = estado;
+      }
+    }
+
+    if (updateAccidenteDto.id_zona !== undefined) {
+      const zona = await this.zonaRepository.findOne({
+        where: { id_zona: updateAccidenteDto.id_zona }
+      });
+      if (zona) {
+        accidente.zona = zona;
+      }
+    }
+
+    if (updateAccidenteDto.id_rol_usuario !== undefined) {
+      const rolUsuario = await this.rolUsuarioRepository.findOne({
+        where: { id_rol_usuario: updateAccidenteDto.id_rol_usuario }
+      });
+      if (rolUsuario) {
+        accidente.rolUsuario = rolUsuario;
+      }
+    }
+
+    const accidenteActualizado = await this.accidenteRepository.save(accidente);
+
+    return {
+      message: 'Accidente actualizado exitosamente',
+      data: accidenteActualizado,
+    };
+
+  } catch (error) {
+    if (error instanceof HttpException) {
+      throw error;
+    }
+    throw new HttpException(
+      `Error al actualizar el accidente: ${error.message}`,
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    );
+  }
+}
+
+  async remove(id_accidente: number) {
     try {
-   
+
       const accidente = await this.accidenteRepository.findOne({
-        where: [
-          { tramite_accidente: ILike(identificador) },
-          { oficio_memorando_mail: ILike(identificador) }
-        ],
-        relations: ['estadoAccInc', 'zona', 'rolUsuario'],
+        where: {id_accidente: id_accidente }
       });
 
       if (!accidente) {
         throw new HttpException(
-          `Accidente con trámite/oficio "${identificador}" no encontrado`,
+          `Accidente con ID ${id_accidente} no encontrado`,
           HttpStatus.NOT_FOUND,
         );
       }
 
-      // Actualizar solo los campos que vienen en el DTO
-      Object.keys(updateAccidenteDto).forEach(key => {
-        if (updateAccidenteDto[key] !== undefined) {
-          accidente[key] = updateAccidenteDto[key];
-        }
-      });
-
-      // Si se actualizan relaciones, buscar las entidades correspondientes
-      if (updateAccidenteDto.id_estado_acc_inc !== undefined) {
-        const estado = await this.estadoAccIncRepository.findOne({
-          where: { id_estado_acc_inc: updateAccidenteDto.id_estado_acc_inc }
-        });
-        if (estado) {
-          accidente.estadoAccInc = estado;
-        }
-      }
-
-      if (updateAccidenteDto.id_zona !== undefined) {
-        const zona = await this.zonaRepository.findOne({
-          where: { id_zona: updateAccidenteDto.id_zona }
-        });
-        if (zona) {
-          accidente.zona = zona;
-        }
-      }
-
-      if (updateAccidenteDto.id_rol_usuario !== undefined) {
-        const rolUsuario = await this.rolUsuarioRepository.findOne({
-          where: { id_rol_usuario: updateAccidenteDto.id_rol_usuario }
-        });
-        if (rolUsuario) {
-          accidente.rolUsuario = rolUsuario;
-        }
-      }
-
-      const accidenteActualizado = await this.accidenteRepository.save(accidente);
-
-      return {
-        message: 'Accidente actualizado exitosamente',
-        data: accidenteActualizado,
-      };
-
-    } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      
-      throw new HttpException(
-        `Error al actualizar el accidente: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
-  // Método alternativo usando Query Builder para mayor eficiencia
-  async updateByTramiteOrOficioV2(
-    identificador: string,
-    updateAccidenteDto: UpdateAccidenteDto,
-  ) {
-    try {
-      // Primero verificar que existe
-      const accidenteExistente = await this.accidenteRepository.findOne({
-        where: [
-          { tramite_accidente: ILike(identificador) },
-          { oficio_memorando_mail: ILike(identificador) }
-        ]
-      });
-
-      if (!accidenteExistente) {
-        throw new HttpException(
-          `Accidente con trámite/oficio "${identificador}" no encontrado`,
-          HttpStatus.NOT_FOUND,
-        );
-      }
-
-      // Crear objeto de actualización sin campos undefined
-      const updateData: Partial<Accidente> = {};
-      Object.keys(updateAccidenteDto).forEach(key => {
-        if (updateAccidenteDto[key] !== undefined) {
-          updateData[key] = updateAccidenteDto[key];
-        }
-      });
-
-      // Actualizar usando Query Builder
-      const queryBuilder = this.accidenteRepository
-        .createQueryBuilder()
-        .update(Accidente)
-        .set(updateData)
-        .where('tramite_accidente ILike :identificador', { identificador })
-        .orWhere('oficio_memorando_mail ILike :identificador', { identificador });
-
-      const result = await queryBuilder.execute();
-
-      if (result.affected === 0) {
-        throw new HttpException(
-          'No se pudo actualizar el accidente',
-          HttpStatus.INTERNAL_SERVER_ERROR,
-        );
-      }
-
-      // Obtener el accidente actualizado
-      const accidenteActualizado = await this.accidenteRepository.findOne({
-        where: [
-          { tramite_accidente: ILike(identificador) },
-          { oficio_memorando_mail: ILike(identificador) }
-        ],
-        relations: ['estadoAccInc', 'zona', 'rolUsuario'],
-      });
-
-      return {
-        message: 'Accidente actualizado exitosamente',
-        data: accidenteActualizado,
-      };
-
-    } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      
-      throw new HttpException(
-        `Error al actualizar el accidente: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
-  async remove(tramite: string) {
-    try {
-
-      const accidente = await this.accidenteRepository.findOne({
-        where: {tramite_accidente: tramite }
-      });
-
-      if (!accidente) {
-        throw new HttpException(
-          `Accidente con ID ${tramite} no encontrado`,
-          HttpStatus.NOT_FOUND,
-        );
-      }
-
-      const result = await this.accidenteRepository.delete(tramite);
+      const result = await this.accidenteRepository.delete(id_accidente);
 
       if (result.affected === 0) {
         throw new HttpException(
@@ -311,7 +242,7 @@ export class AccidenteService {
 
       return {
         message: 'Accidente eliminado exitosamente',
-        tramite_accidente: tramite,
+        id_accidente: id_accidente,
       };
     } catch (error) {
       if (error instanceof HttpException) {
