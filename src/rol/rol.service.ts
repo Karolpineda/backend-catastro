@@ -23,8 +23,8 @@ export class RolService {
         return this.rolRepository.find();
     }
 
-    async getNombreRol(nombre_rol:string){
-        const rolFound =await this.rolRepository.findOne({ where: { nombre_rol }});
+    async getNombreRol(id_rol:number){
+        const rolFound =await this.rolRepository.findOne({ where: { id_rol }});
         if(!rolFound){
             return new HttpException('Rol no existe', HttpStatus.NOT_FOUND);
         } else {
@@ -33,18 +33,18 @@ export class RolService {
 
     }
 
-    async deleteRol(nombre_rol:string){
-        const rolFound =await this.rolRepository.findOne({ where: { nombre_rol }});
+    async deleteRol(id_rol:number){
+        const rolFound =await this.rolRepository.findOne({ where: { id_rol }});
         if(!rolFound){
             return new HttpException('Rol no existe', HttpStatus.NOT_FOUND);
         } else {
-            return this.rolRepository.delete({ nombre_rol });
+            return this.rolRepository.delete({ id_rol });
             
         }
     }
 
-    async updateRol(nombre_rol:string, rol: UpdateRolDto){
-        const rolFound =await this.rolRepository.findOne({ where: { nombre_rol }});
+    async updateRol(id_rol:number, rol: UpdateRolDto){
+        const rolFound =await this.rolRepository.findOne({ where: { id_rol }});
          if (!rolFound){
             return new HttpException('Rol no existe', HttpStatus.NOT_FOUND);
          } else {

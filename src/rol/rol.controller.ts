@@ -17,22 +17,22 @@ export class RolController {
             return this.rolService.getAllRol();
         }
     
-        @Get(':nombre_rol')
-            getCedulaUsuario(@Param('nombre_rol') nombre_rol: string){
-            return this.rolService.getNombreRol(nombre_rol);
+        @Get(':id_rol')
+            getCedulaUsuario(@Param('id_rol') id_rol: number){
+            return this.rolService.getNombreRol(id_rol);
         }
 
         @Get('id/:id_rol')
         getRolById(@Param('id_rol', ParseIntPipe) id_rol: number) {
             return this.rolService.getRolById(id_rol);
         }
-        @Delete(':nombre_rol')
-            deleteZona(@Param('nombre_rol') nombre_rol:string) {
-            return this.rolService.deleteRol(nombre_rol)
+        @Delete(':id_rol')
+            deleteRol(@Param('nombre_rol') id_rol) {
+            return this.rolService.deleteRol(id_rol)
         }
         
-            @Patch(':nombre_rol')
-            updateZona(@Param('id_zona') nombre_rol:string, @Body() updateRol: UpdateRolDto){
-            return this.rolService.updateRol(nombre_rol, updateRol);
+            @Patch(':id_rol')
+            updateRol(@Param('id_zona') id_rol: number, @Body() updateRol: UpdateRolDto){
+            return this.rolService.updateRol(id_rol, updateRol);
         }
 }
