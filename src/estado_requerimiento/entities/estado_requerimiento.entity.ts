@@ -1,4 +1,5 @@
-import { Column, Entity,PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity,PrimaryGeneratedColumn, OneToMany } from "typeorm";
+import { Requerimiento } from "src/requerimiento/entities/requerimiento.entity";
 
 @Entity()
 
@@ -12,4 +13,7 @@ export class Estado_requerimiento {
 
     @Column({nullable: true})
     descrip_estado_requerimiento: string
+
+    @OneToMany(() => Requerimiento, (requerimiento) => requerimiento.estadoRequerimiento)
+  requerimientos: Requerimiento[];
 }
