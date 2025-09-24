@@ -25,8 +25,8 @@ export class ClasifCatastralService {
             return this.clasifCatastralRepository.find();
         }
     
-        async getSiglaCatastral(sigla_clasif_catastral: string){
-            const clasifound = await this.clasifCatastralRepository.findOne({ where: { sigla_clasif_catastral: sigla_clasif_catastral } });
+        async getSiglaCatastral(id_clasif_catastral: number){
+            const clasifound = await this.clasifCatastralRepository.findOne({ where: { id_clasif_catastral: id_clasif_catastral } });
     
             if(!clasifound){
                 return new HttpException('Clasificación catastral no encontrada', HttpStatus.NOT_FOUND);
@@ -34,17 +34,17 @@ export class ClasifCatastralService {
                 return clasifound;
             }
         }
-        async deleteCatastral(sigla_clasif_catastral: string){
-            const clasifound = await this.clasifCatastralRepository.findOne({ where: { sigla_clasif_catastral: sigla_clasif_catastral } });
+        async deleteCatastral(id_clasif_catastral: number){
+            const clasifound = await this.clasifCatastralRepository.findOne({ where: { id_clasif_catastral: id_clasif_catastral } });
     
             if(!clasifound){
                 return new HttpException('Clasificación catastral no encontrada', HttpStatus.NOT_FOUND);
             } else {
-                return this.clasifCatastralRepository.delete({ sigla_clasif_catastral: sigla_clasif_catastral });
+                return this.clasifCatastralRepository.delete({ id_clasif_catastral: id_clasif_catastral });
             }
         }
-        async updateCatastral(sigla_clasif_catastral: string, clasif_catastral:UpdateClasifCatastralDto){
-            const clasifound = await this.clasifCatastralRepository.findOne({ where: { sigla_clasif_catastral: sigla_clasif_catastral } });
+        async updateCatastral(id_clasif_catastral: number, clasif_catastral:UpdateClasifCatastralDto){
+            const clasifound = await this.clasifCatastralRepository.findOne({ where: { id_clasif_catastral: id_clasif_catastral } });
     
             if(!clasifound){
                 return new HttpException('Clasificación catastral no encontrada', HttpStatus.NOT_FOUND);

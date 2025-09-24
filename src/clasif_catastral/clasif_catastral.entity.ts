@@ -1,4 +1,5 @@
-import { Column, Entity,PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity,PrimaryGeneratedColumn, OneToMany } from "typeorm";
+import { SirecqInterno } from 'src/sirecq_interno/entities/sirecq_interno.entity'
 
 @Entity()
 export class Clasif_catastral{
@@ -13,5 +14,8 @@ export class Clasif_catastral{
 
     @Column({nullable: true})
     sigla_clasif_catastral: string
+
+    @OneToMany(() => SirecqInterno, (sirecqInterno) => sirecqInterno.clasifCatastral)
+  sirecqInternos: SirecqInterno[];
 
 }

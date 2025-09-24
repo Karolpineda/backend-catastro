@@ -18,18 +18,18 @@ export class ClasifCatastralController {
             return this.clasifCatastralService.getAllClasificacion();
         }
     
-        @Get(':sigla_clasif_catastral')
-        getSiglaCatastro(@Param('sigla_clasif_catastral') sigla_clasif_catastral: string) {
-            return this.clasifCatastralService.getSiglaCatastral(sigla_clasif_catastral);
+        @Get(':id_clasif_catastral')
+        getSiglaCatastro(@Param('id_clasif_catastral') id_clasif_catastral: number) {
+            return this.clasifCatastralService.getSiglaCatastral(id_clasif_catastral);
         }
     
-        @Delete(':sigla_clasif_catastral')
-        deleteCatastro(@Param('sigla_clasif_catastral') sigla_clasif_catastral: string) {
-            return this.clasifCatastralService.deleteCatastral(sigla_clasif_catastral);
+        @Delete(':id_clasif_catastral')
+        deleteCatastro(@Param('id_clasif_catastral') id_clasif_catastral: number) {
+            return this.clasifCatastralService.deleteCatastral(id_clasif_catastral);
         }
     
-        @Patch(':sigla_clasif_catastral')
-        updateCatastro(@Param('sigla_clasif_catastral') sigla_clasif_catastral: string, @Body() updateClasifCatastralDto: UpdateClasifCatastralDto) {
-            return this.clasifCatastralService.updateCatastral(sigla_clasif_catastral, updateClasifCatastralDto);
+        @Patch(':id_clasif_catastral')
+        updateCatastro(@Param('id_clasif_catastral') id_clasif_catastral: number, @Body() updateClasifCatastralDto: UpdateClasifCatastralDto) {
+            return this.clasifCatastralService.updateCatastral(id_clasif_catastral, updateClasifCatastralDto);
         }
 }
