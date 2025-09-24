@@ -1,26 +1,188 @@
-import { Injectable } from '@nestjs/common';
+// requerimiento.service.ts
+import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, DataSource } from 'typeorm';
+import { Requerimiento } from './entities/requerimiento.entity';
+import { Versionamiento } from 'src/versionamiento/entities/versionamiento.entity';
+import { RequerimientoVersion } from 'src/requerimiento-version/entities/requerimiento-version.entity';
+import { Estado_requerimiento } from 'src/estado_requerimiento/entities/estado_requerimiento.entity';
+import { Categoria } from 'src/categoria/categoria.entity';
+import { Sistema } from 'src/sistema/sistema.entity';
+import { Rol_Usuario } from '../users_rol/entities/users_rol.entity';
 import { CreateRequerimientoDto } from './dto/create-requerimiento.dto';
-import { UpdateRequerimientoDto } from './dto/update-requerimiento.dto';
 
 @Injectable()
 export class RequerimientoService {
-  create(createRequerimientoDto: CreateRequerimientoDto) {
-    return 'This action adds a new requerimiento';
+  constructor(
+    @InjectRepository(Requerimiento)
+    private readonly requerimientoRepository: Repository<Requerimiento>,
+    @InjectRepository(Versionamiento)
+    private readonly versionamientoRepository: Repository<Versionamiento>,
+    @InjectRepository(RequerimientoVersion)
+    private readonly reqVersionRepository: Repository<RequerimientoVersion>,
+    @InjectRepository(Estado_requerimiento)
+    private readonly estadoReqRepository: Repository<Estado_requerimiento>,
+    @InjectRepository(Categoria)
+    private readonly categoriaRepository: Repository<Categoria>,
+    @InjectRepository(Sistema)
+    private readonly sistemaRepository: Repository<Sistema>,
+    @InjectRepository(Rol_Usuario)
+    private readonly rolUsuarioRepository: Repository<Rol_Usuario>,
+    private dataSource: DataSource,
+  ) {}
+
+  // Obtener todos los datos para los dropdowns
+ async getDropdownData() {
+    try {
+      const [estados, categorias, sistemas, analistas] = await Promise.all([
+        this.estadoReqRepository.find({ order: { nombre_estado_requerimiento: 'ASC' } }),
+        this.categoriaRepository.find({ order: { nom_categoria: 'ASC' } }),
+        this.sistemaRepository.find({ order: { nom_sistema: 'ASC' } }),
+        this.getAnalistasCatastrales(), // Usuarios con rol id = 2
+      ]);
+
+      return {
+        estados,
+        categorias,
+        sistemas,
+        analistas,
+      };
+    } catch (error) {
+      throw new HttpException(
+        `Error al obtener datos para formulario: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 
-  findAll() {
-    return `This action returns all requerimiento`;
-  }
+  // Obtener analistas catastrales (rol id = 2)
+  private async getAnalistasCatastrales() {
+  return this.rolUsuarioRepository
+    .createQueryBuilder('rolUsuario')
+    .innerJoinAndSelect('rolUsuario.usuario', 'usuario')
+    .where('rolUsuario.id_rol = :idRol', { idRol: 2 })
+    .select([
+      'rolUsuario.id_rol_usuario',
+      'rolUsuario.id_usuario',
+      'rolUsuario.id_rol',
+      'usuario.id_usuario',
+      'usuario.nombre_usuario',
+      'usuario.apellidos_usuario',
 
-  findOne(id: number) {
-    return `This action returns a #${id} requerimiento`;
-  }
+    ])
+    .getMany();
+}
 
-  update(id: number, updateRequerimientoDto: UpdateRequerimientoDto) {
-    return `This action updates a #${id} requerimiento`;
-  }
+  // Crear requerimiento completo con versión inicial automática
+  async createRequerimientoCompleto(createDto: CreateRequerimientoDto) {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-  remove(id: number) {
-    return `This action removes a #${id} requerimiento`;
+    try {
+      // 1. Validar que existan todas las entidades relacionadas
+      const [estado, categoria, sistema, rolUsuario] = await Promise.all([
+        this.estadoReqRepository.findOne({ 
+          where: { id_estado_requerimiento: createDto.id_estado_requerimiento } 
+        }),
+        this.categoriaRepository.findOne({ 
+          where: { id_categoria: createDto.id_categoria } 
+        }),
+        this.sistemaRepository.findOne({ 
+          where: { id_sistema: createDto.id_sistema } 
+        }),
+        this.rolUsuarioRepository.findOne({ 
+          where: { id_rol_usuario: createDto.id_rol_usuario },
+          relations: ['usuario'] 
+        }),
+      ]);
+
+      if (!estado) throw new HttpException('Estado no encontrado', HttpStatus.NOT_FOUND);
+      if (!categoria) throw new HttpException('Categoría no encontrada', HttpStatus.NOT_FOUND);
+      if (!sistema) throw new HttpException('Sistema no encontrado', HttpStatus.NOT_FOUND);
+      if (!rolUsuario) throw new HttpException('Usuario no encontrado', HttpStatus.NOT_FOUND);
+
+      // 2. Crear el requerimiento
+      const requerimiento = this.requerimientoRepository.create({
+        no_requerimiento: createDto.no_requerimiento,
+        documento: createDto.documento,
+        tema: createDto.tema,
+        descripcion: createDto.descripcion,
+        fase: createDto.fase,
+        prioridad: createDto.prioridad,
+        fecha_registro: new Date(),
+        estadoRequerimiento: estado,
+        categoria: categoria,
+        sistema: sistema,
+        rolUsuario: rolUsuario,
+      });
+      const savedRequerimiento = await queryRunner.manager.save(requerimiento);
+
+      // 3. Crear versión inicial automática v1
+      const versionInicial = this.versionamientoRepository.create({
+        num_version: 1,
+        observacion: 'Versión inicial del requerimiento',
+        fechaenvioreq: new Date(),
+      });
+
+      const savedVersion = await queryRunner.manager.save(versionInicial);
+
+      // 4. Crear relación en tabla de rompimiento requerimiento_version
+     const reqVersion = this.reqVersionRepository.create({
+        requerimiento: savedRequerimiento,
+        versionamiento: savedVersion,
+      });
+
+      await queryRunner.manager.save(reqVersion);
+
+      await queryRunner.commitTransaction();
+
+      // 5. Retornar el requerimiento completo con todas las relaciones
+      return await this.requerimientoRepository.findOne({
+        where: { id_requerimiento: savedRequerimiento.id_requerimiento },
+        relations: [
+          'estadoRequerimiento',
+          'categoria',
+          'sistema',
+          'rolUsuario',
+          'rolUsuario.usuario',
+          'requerimientoVersiones',
+          'requerimientoVersiones.versionamiento',
+          'sirecqExterno'
+        ],
+      });
+
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      if (error instanceof HttpException) throw error;
+      
+      throw new HttpException(
+        `Error al crear requerimiento: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    } finally {
+      await queryRunner.release();
+    }
+  }
+  async findAllRequerimientos() {
+    try {
+      return await this.requerimientoRepository.find({
+        relations: [
+          'estadoRequerimiento',
+          'categoria',
+          'sistema',
+          'rolUsuario',
+          'rolUsuario.usuario',
+          'requerimientoVersiones',
+          'requerimientoVersiones.versionamiento'
+        ],
+        order: { fecha_registro: 'DESC' },
+      });
+    } catch (error) {
+      throw new HttpException(
+        `Error al obtener requerimientos: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 }
