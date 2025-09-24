@@ -1,4 +1,4 @@
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Not, DataSource, ILike } from 'typeorm';
 import { Accidente } from './entities/accidente.entity';
@@ -8,6 +8,7 @@ import { Estado_acc_inc } from 'src/estado_acc_inc/estado_acc_inc.entity';
 import { Rol_Usuario } from 'src/users_rol/entities/users_rol.entity';
 import { UsersRolService} from 'src/users_rol/users_rol.service'
 import { Zona } from 'src/zona/zona.entity'
+
 
 @Injectable()
 export class AccidenteService {
@@ -21,6 +22,8 @@ export class AccidenteService {
     @InjectRepository(Zona)
     private readonly zonaRepository: Repository<Zona>,
     private readonly usersRolService: UsersRolService,
+    private readonly DIAS_LIMITE_DEVUELTO = 10,
+    private readonly logger = new Logger(AccidenteService.name),
   ) {}
 
   async createAccidente(createAccidenteDto: CreateAccidenteDto): Promise<Accidente> {
@@ -262,4 +265,54 @@ export class AccidenteService {
       );
     }
   }
+
+//  async inicializarEstadosNecesarios(): Promise<void> {
+//     const estadosRequeridos = ['Devuelto', 'Cancelado'];
+    
+//     for (const nombreEstado of estadosRequeridos) {
+//       let estado = await this.estadoAccIncRepository.findOne({ 
+//         where: { nombre_estado_acc_inc: nombreEstado } 
+//       });
+      
+//       if (!estado) {
+//         this.logger.warn(`Estado "${nombreEstado}" no encontrado. Considera crearlo.`);
+//       }
+//     }
+//   }
+
+//   async verificarAccidenteDevuelto(accidenteId: number): Promise<boolean> {
+//     const accidente = await this.accidenteRepository.findOne({
+//       where: { id_accidente: accidenteId },
+//       relations: ['estadoAccInc'],
+//     });
+
+//     if (!accidente || accidente.estadoAccInc.nombre_estado_acc_inc !== 'Devuelto') {
+//       return false;
+//     }
+
+//     const fechaLimite = new Date();
+//     fechaLimite.setDate(fechaLimite.getDate() - this.DIAS_LIMITE_DEVUELTO);
+
+//     return accidente.updatedAt <= fechaLimite;
+//   }
+
+//   async cancelarAccidenteSiExpirado(accidenteId: number): Promise<boolean> {
+//     const debeCancelar = await this.verificarAccidenteDevuelto(accidenteId);
+    
+//     if (debeCancelar) {
+//       const estadoCancelado = await this.estadoAccIncRepository.findOne({
+//         where: { nombre_estado_acc_inc: 'Cancelado' }
+//       });
+
+//       await this.accidenteRepository.update(accidenteId, {
+//   estadoAccInc: { id_estado_acc_inc: estadoCancelado.id_estado_acc_inc } as Estado_acc_inc,
+// });
+
+//       return true;
+//     }
+
+//     return false;
+//   }
+
+
 }
