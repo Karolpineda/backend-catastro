@@ -1,4 +1,5 @@
-import { Column, Entity,PrimaryGeneratedColumn } from "typeorm";
+import { RequerimientoVersion } from "src/requerimiento-version/entities/requerimiento-version.entity";
+import { Column, CreateDateColumn, Entity,OneToMany,PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 
 @Entity()
 export class Versionamiento {
@@ -23,5 +24,12 @@ export class Versionamiento {
     
     @Column({nullable: true})
     observacion: string 
+    @CreateDateColumn()
+    createdAt: Date;
 
+    @UpdateDateColumn()
+    updatedAt: Date;
+
+    @OneToMany(() => RequerimientoVersion, (reqVersion) => reqVersion.versionamiento)
+    requerimientoVersiones: RequerimientoVersion[];
 }
