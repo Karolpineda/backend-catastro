@@ -23,8 +23,8 @@ export class DependenciaService {
         return this.dependenciaRepository.find();
     }
 
-    async getNombreDependencia(nom_dependencia: string){
-        const dependenciaFound = await this.dependenciaRepository.findOne({ where: { nombre_dependencia: nom_dependencia } });
+    async getNombreDependencia(id_dependencia: number){
+        const dependenciaFound = await this.dependenciaRepository.findOne({ where: { id_dependencia: id_dependencia } });
 
         if(!dependenciaFound){
             return new HttpException('Dependencia no encontrada', HttpStatus.NOT_FOUND);
@@ -32,17 +32,17 @@ export class DependenciaService {
             return dependenciaFound;
         }
     }
-    async deleteDependencia(nom_dependencia: string){
-        const dependenciaFound = await this.dependenciaRepository.findOne({ where: { nombre_dependencia: nom_dependencia } });
+    async deleteDependencia(id_dependencia: number){
+        const dependenciaFound = await this.dependenciaRepository.findOne({ where: { id_dependencia: id_dependencia } });
 
         if(!dependenciaFound){
             return new HttpException('Dependencia no encontrada', HttpStatus.NOT_FOUND);
         } else {
-            return this.dependenciaRepository.delete({ nombre_dependencia: nom_dependencia });
+            return this.dependenciaRepository.delete({ id_dependencia: id_dependencia });
         }
     }
-    async updateDependencia(nom_dependencia: string, dependencia: UpdateDependenciaDto){
-        const dependenciaFound = await this.dependenciaRepository.findOne({ where: { nombre_dependencia: nom_dependencia } });
+    async updateDependencia(id_dependencia: number, dependencia: UpdateDependenciaDto){
+        const dependenciaFound = await this.dependenciaRepository.findOne({ where: { id_dependencia: id_dependencia } });
 
         if(!dependenciaFound){
             return new HttpException('Dependencia no encontrada', HttpStatus.NOT_FOUND);

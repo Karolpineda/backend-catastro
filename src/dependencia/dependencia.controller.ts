@@ -18,18 +18,18 @@ export class DependenciaController {
         return this.dependenciaService.getAllDependencia();
     }
 
-    @Get(':nom_dependencia')
-    getNombreDependencia(@Param('nom_dependencia') nom_dependencia: string) {
-        return this.dependenciaService.getNombreDependencia(nom_dependencia);
+    @Get(':id_dependencia')
+    getNombreDependencia(@Param('id_dependencia') id_dependencia: number) {
+        return this.dependenciaService.getNombreDependencia(id_dependencia);
     }
 
-    @Delete(':nom_dependencia')
-    deleteDependencia(@Param('nom_dependencia') nom_dependencia: string) {
-        return this.dependenciaService.deleteDependencia(nom_dependencia);
+    @Delete(':id_dependencia')
+    deleteDependencia(@Param('id_dependencia') id_dependencia: number) {
+        return this.dependenciaService.deleteDependencia(id_dependencia);
     }
 
-    @Patch(':nom_dependencia')
-    updateDependencia(@Param('nom_dependencia') nom_dependencia: string, @Body() updateDependencia: UpdateDependenciaDto) {
-        return this.dependenciaService.updateDependencia(nom_dependencia, updateDependencia);
+    @Patch(':id_dependencia')
+    updateDependencia(@Param('id_dependencia') id_dependencia: number, @Body() updateDependencia: UpdateDependenciaDto) {
+        return this.dependenciaService.updateDependencia(id_dependencia, updateDependencia);
     }
 }

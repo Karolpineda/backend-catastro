@@ -1,4 +1,5 @@
-import { Column, Entity,PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity,PrimaryGeneratedColumn, OneToMany } from "typeorm";
+import { SirecqExterno } from "src/sirecq_externo/entities/sirecq_externo.entity";
 
 @Entity()
 export class Dependencia{
@@ -14,5 +15,7 @@ export class Dependencia{
     @Column({nullable: false, default: ''})
     sigla_dependencia: string
 
+    @OneToMany(() => SirecqExterno, (sirecqExterno) => sirecqExterno.dependencia)
+  sirecqExternos: SirecqExterno[];
 
 }
