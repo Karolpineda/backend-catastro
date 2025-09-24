@@ -32,17 +32,17 @@ export class CategoriaService {
             return categoriaFound;
         }
     }
-    async deleteCategoria (siglas_categoria:string){
-        const categoriaFound = await this.categoriaRepository.findOne({ where: { siglas_categoria: siglas_categoria } });
+    async deleteCategoria (id_categoria:number){
+        const categoriaFound = await this.categoriaRepository.findOne({ where: { id_categoria: id_categoria } });
 
         if(!categoriaFound){
             return new HttpException('Categoría no encontrada', HttpStatus.NOT_FOUND);
         } else {
-            return this.categoriaRepository.delete({ siglas_categoria: siglas_categoria });
+            return this.categoriaRepository.delete({ id_categoria: id_categoria });
         }
     }
-    async updateCategoria (siglas_categoria:string, categoria:UpdateCategoriaDto){
-        const categoriaFound = await this.categoriaRepository.findOne({ where: { siglas_categoria: siglas_categoria } });
+    async updateCategoria (id_categoria:number, categoria:UpdateCategoriaDto){
+        const categoriaFound = await this.categoriaRepository.findOne({ where: { id_categoria: id_categoria } });
 
         if(!categoriaFound){
             return new HttpException('Categoría no encontrada', HttpStatus.NOT_FOUND);

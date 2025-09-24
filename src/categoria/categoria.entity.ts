@@ -1,4 +1,5 @@
-import { Column, Entity,PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity,PrimaryGeneratedColumn, OneToMany } from "typeorm";
+import { Requerimiento } from "src/requerimiento/entities/requerimiento.entity";
 
 @Entity()
 export class Categoria{
@@ -10,4 +11,7 @@ export class Categoria{
 
     @Column({nullable: true})
     siglas_categoria: string
+
+    @OneToMany(() => Requerimiento, (requerimiento) => requerimiento.categoria)
+  requerimientos: Requerimiento[];
 }
