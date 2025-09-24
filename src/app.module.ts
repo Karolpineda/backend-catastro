@@ -18,6 +18,10 @@ import { AccidenteModule } from './accidente/accidente.module';
 import { RequerimientoModule } from './requerimiento/requerimiento.module';
 import { SireqExternoModule } from './sireq_externo/sireq_externo.module';
 import { SireqInternoModule } from './sireq_interno/sireq_interno.module';
+import { UsuarioSirecqModule } from './usuario_sirecq/usuario_sirecq.module';
+import { SirecqInternoModule } from './sirecq_interno/sirecq_interno.module';
+import { SirecqExternoModule } from './sirecq_externo/sirecq_externo.module';
+import { RequerimientoVersionModule } from './requerimiento-version/requerimiento-version.module';
 
 @Module({
   imports: [
@@ -54,6 +58,10 @@ import { SireqInternoModule } from './sireq_interno/sireq_interno.module';
     RequerimientoModule,
     SireqExternoModule,
     SireqInternoModule,
+    UsuarioSirecqModule,
+    SirecqInternoModule,
+    SirecqExternoModule,
+    RequerimientoVersionModule,
   ],
   controllers: [],
 })
