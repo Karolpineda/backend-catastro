@@ -23,8 +23,8 @@ export class CategoriaService {
         return this.categoriaRepository.find();
     }
 
-    async getSiglaCategoria (siglas_categoria:string){
-        const categoriaFound = await this.categoriaRepository.findOne({ where: { siglas_categoria: siglas_categoria } });
+    async getSiglaCategoria (id_categoria:number){
+        const categoriaFound = await this.categoriaRepository.findOne({ where: { id_categoria: id_categoria } });
 
         if(!categoriaFound){
             return new HttpException('Categoría no encontrada', HttpStatus.NOT_FOUND);

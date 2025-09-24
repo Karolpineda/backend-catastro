@@ -3,6 +3,7 @@ import { CategoriaService } from './categoria.service';
 import { CreateCategoriaDto } from './dto/create-categoria.dto';
 import { Categoria } from './categoria.entity';
 import { UpdateCategoriaDto } from './dto/update-categoria.dto';
+import { identity } from 'rxjs';
 
 @Controller('categoria')
 export class CategoriaController {
@@ -18,17 +19,17 @@ export class CategoriaController {
     getAllCategory(): Promise<Categoria[]>{
         return this.categoriaService.getAllCategory();
     }
-    @Get('/:siglas_categoria')
-    getSiglaCategoria(@Param('siglas_categoria') siglas_categoria:string){  
-        return this.categoriaService.getSiglaCategoria(siglas_categoria);
+    @Get('/:id_categoria')
+    getSiglaCategoria(@Param('id_categoria') id_categoria:number){  
+        return this.categoriaService.getSiglaCategoria(id_categoria);
     }   
-    @Delete('/:siglas_categoria')
-    deleteCategoria(@Param('siglas_categoria') siglas_categoria:string){  
-        return this.categoriaService.deleteCategoria(siglas_categoria);
+    @Delete('/:id_categoria')
+    deleteCategoria(@Param('id_categoria') id_categoria:number){  
+        return this.categoriaService.deleteCategoria(id_categoria);
     }
-    @Patch('/:siglas_categoria')
-    updateCategoria(@Param('siglas_categoria') siglas_categoria:string, @Body() updateCategoria:UpdateCategoriaDto){  
-        return this.categoriaService.updateCategoria(siglas_categoria, updateCategoria);
+    @Patch('/:id_categoria')
+    updateCategoria(@Param('id_categoria') id_categoria:number, @Body() updateCategoria:UpdateCategoriaDto){  
+        return this.categoriaService.updateCategoria(id_categoria, updateCategoria);
     }
 
 
