@@ -19,9 +19,9 @@ export class ZonaController {
         return this.zonaService.getAllZona();
     }
 
-    @Get(':nombre_zona')
-    getZona(@Param('nombre_zona') nombre_zona:string): Promise<Zona |null> {
-        return this.zonaService.getZona(nombre_zona);
+    @Get(':id_zona')
+    getZona(@Param('id_zona') id_zona:number): Promise<Zona |null> {
+        return this.zonaService.getZona(id_zona);
     }
 
     @Delete(':id_zona')

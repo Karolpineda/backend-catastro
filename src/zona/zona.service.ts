@@ -20,8 +20,8 @@ export class ZonaService {
         return this.zonaRepository.find();
     }
     
-    getZona(nombre_zona: string){
-        return this.zonaRepository.findOne({ where: { nombre_zona } });
+    getZona(id_zona: number){
+        return this.zonaRepository.findOne({ where: { id_zona } });
     }
    
     deleteZona(id_zona:number){
