@@ -24,8 +24,8 @@ export class SistemaService {
         return this.sistemaRepository.find();
     }
 
-    async getNombreSistema(nom_sistema: string){
-        const sistemaFound = await this.sistemaRepository.findOne({ where: { nom_sistema: nom_sistema } });
+    async getNombreSistema(id_sistema: number){
+        const sistemaFound = await this.sistemaRepository.findOne({ where: { id_sistema: id_sistema } });
 
         if(!sistemaFound){
             return new HttpException('Sistema no encontrado', HttpStatus.NOT_FOUND);    
@@ -34,18 +34,18 @@ export class SistemaService {
         }
     }
 
-    async deleteSistema(nom_sistema: string){
-        const sistemaFound = await this.sistemaRepository.findOne({ where: { nom_sistema: nom_sistema } });
+    async deleteSistema(id_sistema: number){
+        const sistemaFound = await this.sistemaRepository.findOne({ where: { id_sistema: id_sistema } });
 
         if(!sistemaFound){
             return new HttpException('Sistema no enconntrado', HttpStatus.NOT_FOUND);
         } else {
-            return this.sistemaRepository.delete({ nom_sistema: nom_sistema });
+            return this.sistemaRepository.delete({ id_sistema: id_sistema });
         }
     }
 
-    async updateSistema(nom_sistema: string, sistema:UpdateSistemaDto){
-        const sistemaFound = await this.sistemaRepository.findOne({ where: { nom_sistema: nom_sistema } });
+    async updateSistema(id_sistema: number, sistema:UpdateSistemaDto){
+        const sistemaFound = await this.sistemaRepository.findOne({ where: { id_sistema: id_sistema } });
 
         if(!sistemaFound){
             return new HttpException('Sistema no enconntrado', HttpStatus.NOT_FOUND);

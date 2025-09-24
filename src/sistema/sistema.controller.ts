@@ -19,18 +19,18 @@ export class SistemaController {
         return this.sistemaService.getAllSistema();
     }
 
-    @Get(':nom_sistema')
-    getNombreSistema(@Param('nom_sistema') nom_sistema: string){
-        return this.sistemaService.getNombreSistema(nom_sistema);
+    @Get(':id_sistema')
+    getNombreSistema(@Param('id_sistema') id_sistema: number){
+        return this.sistemaService.getNombreSistema(id_sistema);
     }
 
-    @Delete(':nom_sistema')
-    deleteSistema(@Param('nom_sistema') nom_sistema: string) {
-        return this.sistemaService.deleteSistema(nom_sistema);
+    @Delete(':id_sistema')
+    deleteSistema(@Param('id_sistema') id_sistema: number) {
+        return this.sistemaService.deleteSistema(id_sistema);
     }
 
-    @Patch(':nom_sistema')
-    updateSistema(@Param('nom_sistema') nom_sistema: string, @Body() updateSistema: UpdateSistemaDto) {
-        return this.sistemaService.updateSistema(nom_sistema, updateSistema);
+    @Patch(':id_sistema')
+    updateSistema(@Param('id_sistema') id_sistema: number, @Body() updateSistema: UpdateSistemaDto) {
+        return this.sistemaService.updateSistema(id_sistema, updateSistema);
     }
 }

@@ -1,4 +1,5 @@
-import { Column, Entity,PrimaryGeneratedColumn } from "typeorm";
+import { Requerimiento } from "src/requerimiento/entities/requerimiento.entity";
+import { Column, Entity,OneToMany,PrimaryGeneratedColumn } from "typeorm";
 
 @Entity()
 export class Sistema {
@@ -14,4 +15,7 @@ export class Sistema {
 
     @Column({nullable: true})
     descrip_sistema: string
+
+    @OneToMany(() => Requerimiento, (requerimiento) => requerimiento.sistema)
+    requerimientos: Requerimiento[];
 }
