@@ -14,16 +14,16 @@ import { Zona } from 'src/zona/zona.entity'
 export class AccidenteService {
   constructor(
     @InjectRepository(Accidente)
-    private readonly accidenteRepository: Repository<Accidente>,
+    private accidenteRepository: Repository<Accidente>,
     @InjectRepository(Estado_acc_inc)
-    private readonly estadoAccIncRepository: Repository<Estado_acc_inc>,
+    private estadoAccIncRepository: Repository<Estado_acc_inc>,
     @InjectRepository(Rol_Usuario) // Añadir esto
-    private readonly rolUsuarioRepository: Repository<Rol_Usuario>,
+    private rolUsuarioRepository: Repository<Rol_Usuario>,
     @InjectRepository(Zona)
-    private readonly zonaRepository: Repository<Zona>,
-    private readonly usersRolService: UsersRolService,
-    private readonly DIAS_LIMITE_DEVUELTO = 10,
-    private readonly logger = new Logger(AccidenteService.name),
+    private zonaRepository: Repository<Zona>,
+    private usersRolService: UsersRolService,
+    // private DIAS_LIMITE_DEVUELTO = 10,
+    // private logger = new Logger(AccidenteService.name),
   ) {}
 
   async createAccidente(createAccidenteDto: CreateAccidenteDto): Promise<Accidente> {
