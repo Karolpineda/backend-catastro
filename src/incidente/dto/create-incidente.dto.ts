@@ -18,7 +18,7 @@ export class CreateIncidenteDto {
 
   @IsOptional()
   @IsNumber()
-  añosirecq: number;
+  aniosirecq: number;
 
   @IsOptional()
   @IsString()

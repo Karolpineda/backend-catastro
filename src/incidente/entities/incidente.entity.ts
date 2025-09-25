@@ -25,7 +25,7 @@ export class Incidente {
   descripcionerror: string;
 
   @Column({ type: 'int', nullable: true })
-  añosirecq: number;
+  aniosirecq: number;
 
   @Column({ type: 'varchar', length: 500, nullable: true })
   mensajeerror: string;
