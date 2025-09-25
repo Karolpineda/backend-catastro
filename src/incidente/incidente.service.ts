@@ -110,42 +110,104 @@ export class IncidenteService {
 
               // 4. CREAR ASIGNACIONES EN TABLA DE ROMPIMIENTO
               if (createIncidenteDto.asignaciones && createIncidenteDto.asignaciones.length > 0) {
-                for (const asignacion of createIncidenteDto.asignaciones) {
-                  const usuarioIncidenteData = {
-                    incidente: { id_incidente: incidenteGuardado.id_incidente },
-                    rolUsuario: { id_rol_usuario: asignacion.idRolUsuario }
-                  };
-                  const usuarioIncidente = this.usuarioIncidenteRepository.create(usuarioIncidenteData);
-                  await queryRunner.manager.save(usuarioIncidente);
-                }
+                  for (const asignacion of createIncidenteDto.asignaciones) {
+                      const rolUsuarioValido = await this.usersRolService.findOne(asignacion.idRolUsuario);
+                      if (!rolUsuarioValido) throw new HttpException(`RolUsuario ${asignacion.idRolUsuario} no existe`, HttpStatus.BAD_REQUEST);
+                      
+                      const usuarioIncidenteData = {
+                          incidente: { id_incidente: incidenteGuardado.id_incidente },
+                          rolUsuario: { id_rol_usuario: asignacion.idRolUsuario }
+                      };
+                      const usuarioIncidente = this.usuarioIncidenteRepository.create(usuarioIncidenteData);
+                      await queryRunner.manager.save(usuarioIncidente);
+                  }
               }
 
               await queryRunner.commitTransaction();
+
 
               // 5. RETORNAR INCIDENTE COMPLETO
               const incidenteCompleto = await this.incidenteRepository.findOne({
                 where: { id_incidente: incidenteGuardado.id_incidente },
                 relations: [
-                  'zona', 
-                  'estado_acc_inc',
-                  'usuariosIncidente',
-                  'usuariosIncidente.rolUsuario',
-                  'usuariosIncidente.rolUsuario.usuario',
-                  'usuariosIncidente.rolUsuario.rol'
+                    'zona', 
+                    'estado_acc_inc',
+                    'usuariosIncidente',
+                    'usuariosIncidente.rolUsuario',
+                    'usuariosIncidente.rolUsuario.usuario',
+                    'usuariosIncidente.rolUsuario.rol'
                 ],
-              });
+            });
 
-              if (!incidenteCompleto) throw new NotFoundException('Incidente no encontrado después de guardar');
-              return incidenteCompleto;
+            if (!incidenteCompleto) throw new NotFoundException('Incidente no encontrado después de guardar');
 
-            } catch (error) {
-              await queryRunner.rollbackTransaction();
-              if (error instanceof HttpException) throw error;
-              throw new HttpException(`Error al crear incidente: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
-            } finally {
-              await queryRunner.release();
+            // Separar técnicos y analistas
+            type UsuarioRolInfo = {
+              id_usuario_incidente: number;
+              id_rol_usuario: number;
+              id_usuario: number;
+              nombre_usuario: string;
+              apellidos_usuario: string;
+              correo_usuario: string;
+              id_rol: number;
+              nombre_rol: string;
+            } | null;
+
+            const response: typeof incidenteCompleto & {
+              tecnico: UsuarioRolInfo;
+              analista: UsuarioRolInfo;
+            } = {
+              ...incidenteCompleto,
+              tecnico: null,
+              analista: null,
+            };
+
+            // Buscar técnico (rol id 7) y analista (rol id 2)
+            if (incidenteCompleto.usuariosIncidente && incidenteCompleto.usuariosIncidente.length > 0) {
+                const tecnico = incidenteCompleto.usuariosIncidente.find(ui => 
+                    ui.rolUsuario.rol.id_rol === 7
+                );
+                const analista = incidenteCompleto.usuariosIncidente.find(ui => 
+                    ui.rolUsuario.rol.id_rol === 2
+                );
+
+                if (tecnico) {
+                    response.tecnico = {
+                        id_usuario_incidente: tecnico.id_usuario_incidente,
+                        id_rol_usuario: tecnico.rolUsuario.id_rol_usuario,
+                        id_usuario: tecnico.rolUsuario.usuario.id_usuario,
+                        nombre_usuario: tecnico.rolUsuario.usuario.nombre_usuario,
+                        apellidos_usuario: tecnico.rolUsuario.usuario.apellidos_usuario,
+                        correo_usuario: tecnico.rolUsuario.usuario.correo_usuario,
+                        id_rol: tecnico.rolUsuario.rol.id_rol,
+                        nombre_rol: tecnico.rolUsuario.rol.nombre_rol
+                    };
+                }
+
+                if (analista) {
+                    response.analista = {
+                        id_usuario_incidente: analista.id_usuario_incidente,
+                        id_rol_usuario: analista.rolUsuario.id_rol_usuario,
+                        id_usuario: analista.rolUsuario.usuario.id_usuario,
+                        nombre_usuario: analista.rolUsuario.usuario.nombre_usuario,
+                        apellidos_usuario: analista.rolUsuario.usuario.apellidos_usuario,
+                        correo_usuario: analista.rolUsuario.usuario.correo_usuario,
+                        id_rol: analista.rolUsuario.rol.id_rol,
+                        nombre_rol: analista.rolUsuario.rol.nombre_rol
+                    };
+                }
             }
-          }
+
+            return response;
+
+        } catch (error) {
+            await queryRunner.rollbackTransaction();
+            if (error instanceof HttpException) throw error;
+            throw new HttpException(`Error al crear incidente: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+        } finally {
+            await queryRunner.release();
+        }
+    }
 
       async findAllIncidente(): Promise<Incidente[]> {
         try {
