@@ -24,7 +24,7 @@ export class Incidente {
   @Column({ type: 'varchar', length: 500, nullable: true })
   descripcionerror: string;
 
-  @Column({ type: 'int', nullable: true })
+  @Column({ type: 'int', nullable: true, name: 'aniosirecq' })
   aniosirecq: number;
 
   @Column({ type: 'varchar', length: 500, nullable: true })
