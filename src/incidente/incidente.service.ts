@@ -147,19 +147,48 @@ export class IncidenteService {
             }
           }
 
-      async findAllIncidente(): Promise<Incidente[]> {
-        try {
-          return await this.incidenteRepository.find({
-            relations: ['zona', 'estado_acc_inc'],
-            order: { createdAt: 'DESC' },
-          });
-        } catch (error) {
-          throw new HttpException(
-            'Error al obtener los incidentes: ' + error.message,
-            HttpStatus.INTERNAL_SERVER_ERROR
-          );
-        }
-      }
+ async findAllIncidente(): Promise<any[]> {
+  try {
+    const incidentes = await this.incidenteRepository.find({
+      select: [
+        'id_incidente',
+        'no_incidente',
+        'fechaingresoerror',
+        'descripcionerror',
+        'aniosirecq',
+        'tipologia',
+        'createdAt',
+      ],
+      relations: ['zona', 'estado_acc_inc'],
+      order: { createdAt: 'DESC' },
+    });
+
+    return incidentes.map((i) => ({
+      id_incidente: i.id_incidente,
+      no_incidente: i.no_incidente,
+      fechaingresoerror: i.fechaingresoerror,
+      descripcionerror: i.descripcionerror,
+      aniosirecq: i.aniosirecq,
+      tipologia: i.tipologia,
+      zona: i.zona
+        ? { id_zona: i.zona.id_zona, nombre_zona: i.zona.nombre_zona }
+        : null,
+      estado_acc_inc: i.estado_acc_inc
+        ? {
+            id_estado_acc_inc: i.estado_acc_inc.id_estado_acc_inc,
+            nombre_estado_acc_inc: i.estado_acc_inc.nombre_estado_acc_inc,
+          }
+        : null,
+    }));
+  } catch (error) {
+    console.error('❌ Error en findAllIncidente:', error); // 👈 agrega esto
+    throw new HttpException(
+      'Error al obtener los incidentes: ' + error.message,
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    );
+  }
+}
+
      
 
 
