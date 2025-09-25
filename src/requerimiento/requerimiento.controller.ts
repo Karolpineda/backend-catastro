@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, HttpStatus, HttpCode } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, HttpStatus, HttpCode, HttpException, ParseIntPipe } from '@nestjs/common';
 import { RequerimientoService } from './requerimiento.service';
 import { CreateRequerimientoDto } from './dto/create-requerimiento.dto';
 import { UpdateRequerimientoDto } from './dto/update-requerimiento.dto';
@@ -26,9 +26,7 @@ export class RequerimientoController {
     }
   }
 
-  /**
-   * Crear un nuevo requerimiento completo con versión inicial
-   */
+ 
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async createRequerimiento(@Body() createRequerimientoDto: CreateRequerimientoDto) {
@@ -48,24 +46,84 @@ export class RequerimientoController {
       };
     }
   }
+   @Get()
+  @HttpCode(HttpStatus.OK)
+  async getAllRequerimientos() {
+    try {
+      const requerimientos = await this.requerimientoService.findAllRequerimientos();
+      
+      return {
+        success: true,
+        message: 'Requerimientos obtenidos correctamente',
+        data: requerimientos,
+        count: requerimientos.length
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          success: false,
+          message: error.message,
+          data: null,
+          count: 0
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
 
-  // @Get()
-  // findAll() {
-  //   return this.requerimientoService.findAll();
-  // }
+  /**
+   * Obtener un requerimiento específico por ID
+   */
+  @Get(':id_requerimiento')
+  @HttpCode(HttpStatus.OK)
+  async getRequerimientoById(@Param('id_requerimiento', ParseIntPipe) id_requerimiento: number) {
+    try {
+      const requerimiento = await this.requerimientoService.findById(id_requerimiento);
+      
+      if (!requerimiento) {
+        throw new HttpException(
+          `Requerimiento con ID ${id_requerimiento} no encontrado`,
+          HttpStatus.NOT_FOUND
+        );
+      }
 
-  // @Get(':id')
-  // findOne(@Param('id') id: string) {
-  //   return this.requerimientoService.findOne(+id);
-  // }
+      return {
+        success: true,
+        message: 'Requerimiento obtenido correctamente',
+        data: requerimiento
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          success: false,
+          message: error.message,
+          data: null
+        },
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
 
-  // @Patch(':id')
-  // update(@Param('id') id: string, @Body() updateRequerimientoDto: UpdateRequerimientoDto) {
-  //   return this.requerimientoService.update(+id, updateRequerimientoDto);
-  // }
-
-  // @Delete(':id')
-  // remove(@Param('id') id: string) {
-  //   return this.requerimientoService.remove(+id);
-  // }
+  @Delete(':id_requerimiento')
+  @HttpCode(HttpStatus.OK)
+  async deleteRequerimiento(@Param('id_requerimiento', ParseIntPipe) id_requerimiento: number) {
+    try {
+      const result = await this.requerimientoService.deleteRequerimiento(id_requerimiento);
+      
+      return {
+        success: true,
+        message: result.message,
+        data: { id: result.id_requerimiento }
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          success: false,
+          message: error.message,
+          data: null
+        },
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
 }

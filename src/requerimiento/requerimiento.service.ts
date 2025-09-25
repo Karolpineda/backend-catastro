@@ -103,6 +103,16 @@ export class RequerimientoService {
       if (!rolUsuario) throw new HttpException('Usuario no encontrado', HttpStatus.NOT_FOUND);
 
       // 2. Crear el requerimiento
+
+      const requerimientoExiste = await this.requerimientoRepository.findOne({
+        where: { no_requerimiento: createDto.no_requerimiento },
+      });
+      if (requerimientoExiste) {
+        throw new HttpException(
+          `El número de requerimiento ${createDto.no_requerimiento} ya existe.`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
       const requerimiento = this.requerimientoRepository.create({
         no_requerimiento: createDto.no_requerimiento,
         documento: createDto.documento,
@@ -147,8 +157,7 @@ export class RequerimientoService {
           'rolUsuario',
           'rolUsuario.usuario',
           'requerimientoVersiones',
-          'requerimientoVersiones.versionamiento',
-          'sirecqExterno'
+          'requerimientoVersiones.versionamiento'
         ],
       });
 
@@ -185,4 +194,103 @@ export class RequerimientoService {
       );
     }
   }
+
+      async findById(id: number): Promise<Requerimiento> {
+        try {
+          const requerimiento = await this.requerimientoRepository.findOne({
+            where: { id_requerimiento: id },
+            relations: [
+              'estadoRequerimiento',
+              'categoria',
+              'sistema',
+              'rolUsuario',
+              'rolUsuario.usuario',
+              'requerimientoVersiones',
+              'requerimientoVersiones.versionamiento',
+              'sirecqExterno'
+            ],
+          });
+
+          if (!requerimiento) {
+            throw new HttpException(`Requerimiento con ID ${id} no encontrado`, HttpStatus.NOT_FOUND);
+          }
+
+          return requerimiento;
+        } catch (error) {
+          throw new HttpException(
+            `Error al obtener requerimiento: ${error.message}`,
+            HttpStatus.INTERNAL_SERVER_ERROR,
+          );
+        }
+
+      }
+
+    async deleteRequerimiento(id_requerimiento: number): Promise<{ message: string; id_requerimiento: number }> {
+      const queryRunner = this.dataSource.createQueryRunner();
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
+      try {
+        // 1. Verificar que el requerimiento existe
+        const requerimiento = await this.requerimientoRepository.findOne({
+          where: { id_requerimiento: id_requerimiento },
+          relations: ['requerimientoVersiones', 'sirecqExterno']
+        });
+
+        if (!requerimiento) {
+          throw new HttpException(
+            `Requerimiento con ID ${id_requerimiento} no encontrado`,
+            HttpStatus.NOT_FOUND
+          );
+        }
+
+        // 3. Eliminar en orden: primero las relaciones, luego el requerimiento
+        
+        // Eliminar relaciones de versionamiento si existen
+        if (requerimiento.requerimientoVersiones && requerimiento.requerimientoVersiones.length > 0) {
+          await queryRunner.manager.delete(RequerimientoVersion, {
+            requerimiento: { id_requerimiento: id_requerimiento }
+          });
+        }
+
+        // 4. Eliminar el requerimiento
+        const result = await queryRunner.manager.delete(Requerimiento, id_requerimiento);
+
+        if (result.affected === 0) {
+          throw new HttpException(
+            'No se pudo eliminar el requerimiento',
+            HttpStatus.INTERNAL_SERVER_ERROR
+          );
+        }
+
+        await queryRunner.commitTransaction();
+
+        return {
+          message: 'Requerimiento eliminado exitosamente',
+          id_requerimiento: id_requerimiento
+        };
+
+      } catch (error) {
+        await queryRunner.rollbackTransaction();
+        
+        if (error instanceof HttpException) {
+          throw error;
+        }
+
+        // Manejar error de integridad referencial
+        if (error.code === '23503') {
+          throw new HttpException(
+            'No se puede eliminar el requerimiento porque tiene registros relacionados en otras tablas',
+            HttpStatus.CONFLICT
+          );
+        }
+
+        throw new HttpException(
+          `Error al eliminar el requerimiento: ${error.message}`,
+          HttpStatus.INTERNAL_SERVER_ERROR
+        );
+      } finally {
+        await queryRunner.release();
+      }
+    }
 }

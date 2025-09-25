@@ -11,38 +11,38 @@ export class Requerimiento {
   @PrimaryGeneratedColumn()
   id_requerimiento: number;
 
-  @Column({ type: 'varchar', length: 100, name: 'no_requerimiento' })
+  @Column({ type: 'varchar', length: 100, name: 'no_requerimiento', nullable: true  })
   no_requerimiento: string;
 
- @Column({ type: 'date', default: () => 'CURRENT_DATE' })
+ @Column({ type: 'date', default: () => 'CURRENT_DATE', nullable: true  })
   fecha_registro: Date;
 
   @Column({ type: 'varchar', length: 255, nullable: true, name: 'documento' })
   documento: string;
 
-  @Column({ type: 'varchar', length: 255, name: 'tema' })
+  @Column({ type: 'varchar', length: 255, name: 'tema', nullable: true  })
   tema: string;
 
   @Column({ type: 'text', name: 'descripcion' })
   descripcion: string;
 
-  @Column({ type: 'varchar', length: 100, name: 'fase' })
+  @Column({ type: 'varchar', length: 100, name: 'fase', nullable: true })
   fase: string;
 
-  @Column({ type: 'int', name: 'prioridad' })
+  @Column({ type: 'int', name: 'prioridad', nullable: true })
   prioridad: number;
 
   // Columnas para las claves foráneas
-  @Column({ type: 'int', name: 'id_estado_requerimiento' })
+  @Column({ type: 'int', name: 'id_estado_requerimiento', nullable: true  })
   id_estado_requerimiento: number;
 
-  @Column({ type: 'int', name: 'id_categoria' })
+  @Column({ type: 'int', name: 'id_categoria',nullable: true  })
   id_categoria: number;
 
-  @Column({ type: 'int', name: 'id_sistema' })
+  @Column({ type: 'int', name: 'id_sistema', nullable: true  })
   id_sistema: number;
 
-  @Column({ type: 'int', name: 'id_rol_usuario' })
+  @Column({ type: 'int', name: 'id_rol_usuario', nullable: true  })
   id_rol_usuario: number;
 
   // Relaciones
