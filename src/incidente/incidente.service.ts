@@ -72,7 +72,7 @@ export class IncidenteService {
 
               // Validaciones básicas
               if (!createIncidenteDto.no_incidente) throw new HttpException('Número de incidente obligatorio', HttpStatus.BAD_REQUEST);
-              if (createIncidenteDto.añosirecq > new Date().getFullYear() + 1) throw new HttpException('Año no puede ser futuro', HttpStatus.BAD_REQUEST);
+              if (createIncidenteDto.aniosirecq > new Date().getFullYear() + 1) throw new HttpException('Año no puede ser futuro', HttpStatus.BAD_REQUEST);
 
               // 2. VALIDAR ASIGNACIONES de usuarios
               if (createIncidenteDto.asignaciones && createIncidenteDto.asignaciones.length > 0) {
@@ -93,7 +93,7 @@ export class IncidenteService {
                 fechaingresoerror: createIncidenteDto.fechaingresoerror || new Date(),
                 tipologia: createIncidenteDto.tipologia,
                 descripcionerror: createIncidenteDto.descripcionerror,
-                añosirecq: createIncidenteDto.añosirecq,
+                aniosirecq: createIncidenteDto.aniosirecq,
                 zona: zonaFound,                    
                 estado_acc_inc: estadoPendiente,
                 createdAt: new Date(),
@@ -224,7 +224,7 @@ export class IncidenteService {
               fechaingresoerror: incidente.fechaingresoerror,
               fech_solucion: incidente.fech_solucion,
               descripcionerror: incidente.descripcionerror,
-              añosirecq: incidente.añosirecq,
+              aniosirecq: incidente.aniosirecq,
               mensajeerror: incidente.mensajeerror,
               tipologia: incidente.tipologia,
               obs_incidente: incidente.obs_incidente,
@@ -315,14 +315,14 @@ export class IncidenteService {
             incidente.no_incidente = updateIncidenteDto.no_incidente.trim().toUpperCase();
           }
 
-          if (updateIncidenteDto.añosirecq && updateIncidenteDto.añosirecq > new Date().getFullYear() + 1) {
+          if (updateIncidenteDto.aniosirecq && updateIncidenteDto.aniosirecq > new Date().getFullYear() + 1) {
             throw new HttpException('Año no puede ser futuro', HttpStatus.BAD_REQUEST);
           }
 
           // 4. ACTUALIZAR CAMPOS PRINCIPALES
           incidente.tipologia = updateIncidenteDto.tipologia ?? incidente.tipologia;
           incidente.descripcionerror = updateIncidenteDto.descripcionerror ?? incidente.descripcionerror;
-          incidente.añosirecq = updateIncidenteDto.añosirecq ?? incidente.añosirecq;
+          incidente.aniosirecq = updateIncidenteDto.aniosirecq ?? incidente.aniosirecq;
           incidente.updatedAt = new Date();
 
           if (updateIncidenteDto.error_img) {
