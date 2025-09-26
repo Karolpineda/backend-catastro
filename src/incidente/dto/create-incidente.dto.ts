@@ -37,4 +37,20 @@ export class CreateIncidenteDto {
   @ValidateNested({ each: true })
   @Type(() => CreateUsuarioIncidenteDto)
   asignaciones?: CreateUsuarioIncidenteDto[];
+
+  // 👇 NUEVO
+  @IsOptional()
+  @IsString()
+  mensajeerror?: string;
+
+  // 👇 NUEVO
+  @IsOptional()
+  @IsString()
+  obs_incidente?: string;
+
+  // 👇 NUEVO
+  @IsOptional()
+  @IsDate()
+  @Type(() => Date)
+  fech_solucion?: Date;
 }

@@ -19,31 +19,31 @@ export class Incidente {
   estado_acc_inc: Estado_acc_inc;
 
   @Column({ type: 'timestamp', nullable: true })
-  fechaingresoerror: Date;
+  fechaingresoerror?: Date | null;
 
   @Column({ type: 'varchar', length: 500, nullable: true })
-  descripcionerror: string;
+  descripcionerror?: string | null;
 
   @Column({ type: 'int', nullable: true, name: 'aniosirecq' })
-  aniosirecq: number;
+  aniosirecq?: number | null;
 
   @Column({ type: 'varchar', length: 500, nullable: true })
-  mensajeerror: string;
+  mensajeerror?: string | null;
 
   @Column({ type: 'varchar', length: 50, nullable: true })
-  no_incidente: string;
+  no_incidente?: string | null;
 
   @Column({ type: 'varchar', length: 20, nullable: true })
-  tipologia: string;
+  tipologia?: string | null;
 
   @Column({ type: 'text', nullable: true })
-  obs_incidente: string;
+  obs_incidente?: string | null;
 
   @Column({ type: 'timestamp', nullable: true })
-  fech_solucion: Date;
+  fech_solucion?: Date | null;
 
   @Column({ type: 'bytea', nullable: true })
-  error_img: Buffer | null;
+  error_img?: Buffer | null;
 
   // Timestamps automáticos
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
