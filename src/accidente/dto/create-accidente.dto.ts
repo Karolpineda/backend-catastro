@@ -18,6 +18,10 @@ export class CreateAccidenteDto {
   @IsDateString({}, { message: 'fecha_asignacion debe ser una fecha válida' })
   fecha_asignacion: Date;
 
+  @IsNotEmpty({ message: 'fecha_estado es obligatoria' })
+  @IsDateString({}, { message: 'fecha_estado debe ser una fecha válida' })
+  fecha_estado: Date;
+
   @IsNotEmpty({ message: 'tipologia es obligatoria' })
   @IsInt({ message: 'tipologia debe ser un número entero' })
   tipologia: number;
