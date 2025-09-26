@@ -27,36 +27,108 @@ export class AccidenteService {
   ) {}
 
   async createAccidente(createAccidenteDto: CreateAccidenteDto): Promise<Accidente> {
-    // Validar que trámite o oficio esté presente
-    if (!createAccidenteDto.tramite_accidente && !createAccidenteDto.oficio_memorando_mail) {
+  // Validar que trámite o oficio esté presente
+  if (createAccidenteDto.tramite_accidente && createAccidenteDto.oficio_memorando_mail) {
+        throw new HttpException(
+          'Solo debe ingresar trámite O número de oficio/memorando/mail, no ambos',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      if (!createAccidenteDto.tramite_accidente && !createAccidenteDto.oficio_memorando_mail) {
+        throw new HttpException(
+          'Debe ingresar trámite O número de oficio/memorando/mail',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+    // ✅ NUEVO: Validar que no se repitan trámite u oficio
+      if (createAccidenteDto.tramite_accidente) {
+        const tramiteExistente = await this.accidenteRepository.findOne({
+          where: { tramite_accidente: createAccidenteDto.tramite_accidente }
+        });
+
+        if (tramiteExistente) {
+          throw new HttpException(
+            `Ya existe un accidente con el trámite: ${createAccidenteDto.tramite_accidente}`,
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+      }
+
+      if (createAccidenteDto.oficio_memorando_mail) {
+        const oficioExistente = await this.accidenteRepository.findOne({
+          where: { oficio_memorando_mail: createAccidenteDto.oficio_memorando_mail }
+        });
+
+        if (oficioExistente) {
+          throw new HttpException(
+            `Ya existe un accidente con el oficio/memorando/mail: ${createAccidenteDto.oficio_memorando_mail}`,
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+      }
+
+  const camposObligatorios = [
+    { campo: 'fech_ingr_tramite', nombre: 'fecha de ingreso del trámite' },
+    { campo: 'fecha_asignacion', nombre: 'fecha de asignación' },
+    { campo: 'tipologia', nombre: 'tipología' },
+    { campo: 'inspeccion', nombre: 'inspección' },
+    { campo: 'predio', nombre: 'predio' },
+    { campo: 'clave_catastral', nombre: 'clave catastral' },
+    { campo: 'nom_propietario', nombre: 'nombre del propietario' },
+    { campo: 'id_zona', nombre: 'zona' },
+    { campo: 'id_rol_usuario', nombre: 'rol de usuario' }
+  ];
+
+  for (const { campo, nombre } of camposObligatorios) {
+    if (createAccidenteDto[campo] === null || createAccidenteDto[campo] === undefined || createAccidenteDto[campo] === '') {
       throw new HttpException(
-        'Debe ingresar trámite o número de oficio/memorando/mail',
+        `El campo ${nombre} es obligatorio`,
         HttpStatus.BAD_REQUEST,
       );
     }
-
-    // Validar estado (no debe ser "Favorable")
-    const estado = await this.estadoAccIncRepository.findOne({
-      where: {
-        id_estado_acc_inc: createAccidenteDto.id_estado_acc_inc,
-        nombre_estado_acc_inc: Not('Favorable'),
-      },
-    });
-    if (!estado) {
-      throw new HttpException(
-        'El estado seleccionado no es válido o es "Favorable"',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    // Crear el accidente
-    const accidente = this.accidenteRepository.create({
-      ...createAccidenteDto,
-      estadoAccInc: estado,
-    });
-
-    return this.accidenteRepository.save(accidente);
   }
+  // Validar estado (no debe ser "Favorable")
+  const estado = await this.estadoAccIncRepository.findOne({
+    where: {
+      id_estado_acc_inc: createAccidenteDto.id_estado_acc_inc,
+      nombre_estado_acc_inc: Not('Favorable'),
+    },
+  });
+  if (!estado) {
+    throw new HttpException(
+      'El estado seleccionado no es válido o es "Favorable"', HttpStatus.BAD_REQUEST,
+    );
+  }
+
+  // Validar zona
+  const zona = await this.zonaRepository.findOne({
+    where: { id_zona: createAccidenteDto.id_zona },
+  });
+  if (!zona) {
+    throw new HttpException('La zona seleccionada no existe', HttpStatus.BAD_REQUEST);
+  }
+
+  // Validar rol de usuario
+  const rolUsuario = await this.rolUsuarioRepository.findOne({
+    where: { id_rol_usuario: createAccidenteDto.id_rol_usuario },
+  });
+  if (!rolUsuario) {
+    throw new HttpException('El rol de usuario seleccionado no existe', HttpStatus.BAD_REQUEST);
+  }
+
+  // Crear accidente con las relaciones
+  const accidente = this.accidenteRepository.create({
+    ...createAccidenteDto,
+    estadoAccInc: estado,
+    zona: zona,
+    rolUsuario: rolUsuario,
+  });
+
+  return this.accidenteRepository.save(accidente);
+}
+
 
   // Obtener todos los estados menos el "Favorable"
   async getEstadosNoFavorable(): Promise<Estado_acc_inc[]> {
