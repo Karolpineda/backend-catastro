@@ -112,7 +112,7 @@ export class AccidenteService {
   async findOneByTramite(id_accidente: number) {
     try {
       const accidente = await this.accidenteRepository.findOne({
-        where: { id_accidente: ILike(id_accidente) },
+        where: { id_accidente: id_accidente },
         relations: ['estadoAccInc', 'rolUsuario', 'zona'],
       });
 
@@ -136,21 +136,20 @@ export class AccidenteService {
   }
 
   async updateByTramiteOrOficio(
-  identificador: string,
+  id_accidente: number,
   updateAccidenteDto: UpdateAccidenteDto,
 ) {
   try {
     const accidente = await this.accidenteRepository.findOne({
       where: [
-        { tramite_accidente: ILike(identificador) },
-        { oficio_memorando_mail: ILike(identificador) }
+        { id_accidente:id_accidente }
       ],
       relations: ['estadoAccInc', 'zona', 'rolUsuario'],
     });
 
     if (!accidente) {
       throw new HttpException(
-        `Accidente con trámite/oficio "${identificador}" no encontrado`,
+        `Accidente con trámite/oficio "${id_accidente}" no encontrado`,
         HttpStatus.NOT_FOUND,
       );
     }

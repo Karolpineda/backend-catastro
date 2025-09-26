@@ -3,9 +3,44 @@ import { AccidenteService } from './accidente.service';
 import { CreateAccidenteDto } from './dto/create-accidente.dto';
 import { UpdateAccidenteDto } from './dto/update-accidente.dto';
 
+import { UsersRolService } from '../users_rol/users_rol.service';
+
 @Controller('accidente')
 export class AccidenteController {
-  constructor(private readonly accidenteService: AccidenteService) {}
+  constructor(
+    private readonly accidenteService: AccidenteService,
+    private readonly usersRolService: UsersRolService,
+  ) {}
+
+  @Get('estados-no-favorable')
+  async getEstadosNoFavorable() {
+    try {
+      return await this.accidenteService.getEstadosNoFavorable();
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        'Error al obtener los estados no favorables',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Get('analistas-accidentes')
+  async getAnalistasAccidentes() {
+    try {
+      return await this.usersRolService.getAnalistasAccidentes();
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        'Error al obtener los analistas de accidentes',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 
   @Post()
   async create(@Body() createAccidenteDto: CreateAccidenteDto) {
@@ -42,7 +77,7 @@ export class AccidenteController {
   }
 
   @Get('id_accidente/:id_accidente')
-  async findOneByTramite(@Param('tramite') id_accidente: number) {
+  async findOneByTramite(@Param('id_accidente') id_accidente: number) {
     try {
       return await this.accidenteService.findOneByTramite(id_accidente);
     } catch (error) {
@@ -56,14 +91,14 @@ export class AccidenteController {
     }
   }
 
-  @Patch('buscar/:identificador')
+  @Patch('buscar/:id_accidente')
   async updateByTramiteOrOficio(
-    @Param('identificador') identificador: string,
+    @Param('id_accidente') id_accidente: number,
     @Body() updateAccidenteDto: UpdateAccidenteDto,
   ) {
     try {
       return await this.accidenteService.updateByTramiteOrOficio(
-        identificador,
+        id_accidente,
         updateAccidenteDto,
       );
     } catch (error) {
