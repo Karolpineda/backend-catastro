@@ -234,7 +234,7 @@ export class RequerimientoService {
         // 1. Verificar que el requerimiento existe
         const requerimiento = await this.requerimientoRepository.findOne({
           where: { id_requerimiento: id_requerimiento },
-          relations: ['requerimientoVersiones', 'sirecqExterno']
+          relations: ['requerimientoVersiones', 'requerimientoVersiones.versionamiento']
         });
 
         if (!requerimiento) {
@@ -244,13 +244,37 @@ export class RequerimientoService {
           );
         }
 
+        // 2. Verificar si tiene SirecqExterno relacionado
+        if (requerimiento.sirecqExterno) {
+          throw new HttpException(
+            'No se puede eliminar el requerimiento porque tiene un SirecqExterno relacionado. Elimine primero el SirecqExterno.',
+            HttpStatus.CONFLICT
+          );
+        }
+
         // 3. Eliminar en orden: primero las relaciones, luego el requerimiento
-        
+        const versionesIds: number[] = [];
+        if (requerimiento.requerimientoVersiones && requerimiento.requerimientoVersiones.length > 0) {
+          requerimiento.requerimientoVersiones.forEach(relacion => {
+            if (relacion.versionamiento) {
+              versionesIds.push(relacion.versionamiento.id_version);
+            }
+          });
+        }
+
         // Eliminar relaciones de versionamiento si existen
         if (requerimiento.requerimientoVersiones && requerimiento.requerimientoVersiones.length > 0) {
           await queryRunner.manager.delete(RequerimientoVersion, {
             requerimiento: { id_requerimiento: id_requerimiento }
           });
+          // Remover el logger: this.logger.log(`Eliminadas ${requerimiento.requerimientoVersiones.length} relaciones de versionamiento`);
+        }
+
+        if (versionesIds.length > 0) {
+          for (const idVersion of versionesIds) {
+            await queryRunner.manager.delete(Versionamiento, idVersion);
+          }
+          // Remover el logger: this.logger.log(`Eliminadas ${versionesIds.length} versiones del versionamiento`);
         }
 
         // 4. Eliminar el requerimiento
@@ -265,8 +289,10 @@ export class RequerimientoService {
 
         await queryRunner.commitTransaction();
 
+        // Remover el logger: this.logger.log(`Requerimiento ${id_requerimiento} eliminado exitosamente con todas sus versiones`);
+
         return {
-          message: 'Requerimiento eliminado exitosamente',
+          message: 'Requerimiento eliminado exitosamente con todas sus versiones',
           id_requerimiento: id_requerimiento
         };
 
