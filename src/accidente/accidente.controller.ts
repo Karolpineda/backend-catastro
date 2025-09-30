@@ -2,6 +2,7 @@ import { Controller, Query, Get, Post, Body, Patch, Param, Delete, HttpException
 import { AccidenteService } from './accidente.service';
 import { CreateAccidenteDto } from './dto/create-accidente.dto';
 import { UpdateAccidenteDto } from './dto/update-accidente.dto';
+import { FiscalAccidenteDto } from './dto/update-fiscal-accidente.dto';
 
 import { UsersRolService } from '../users_rol/users_rol.service';
 
@@ -125,5 +126,11 @@ export class AccidenteController {
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
+  }
+
+  @Patch('fiscalizacion/:id_accidente')
+  async updateFiscalizacion(@Param('id_accidente') id_accidente: number, @Body() fiscalAccidenteDto: FiscalAccidenteDto,
+  ) {
+    return this.accidenteService.updateFiscalizacion(id_accidente, fiscalAccidenteDto);
   }
 }

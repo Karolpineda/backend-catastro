@@ -54,6 +54,9 @@ export class Accidente {
   @Column({ type: 'varchar', nullable: true })
   nom_propietario: string;
 
+  @Column({ type: 'boolean', default: false })
+  fiscalizacion: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 

@@ -4,6 +4,7 @@ import { Repository, Not, DataSource, ILike } from 'typeorm';
 import { Accidente } from './entities/accidente.entity';
 import { CreateAccidenteDto } from './dto/create-accidente.dto';
 import { UpdateAccidenteDto } from './dto/update-accidente.dto';
+import { FiscalAccidenteDto } from './dto/update-fiscal-accidente.dto';
 import { Estado_acc_inc } from 'src/estado_acc_inc/estado_acc_inc.entity';
 import { Rol_Usuario } from 'src/users_rol/entities/users_rol.entity';
 import { UsersRolService} from 'src/users_rol/users_rol.service'
@@ -336,6 +337,40 @@ export class AccidenteService {
       );
     }
   }
+
+
+    async updateFiscalizacion(id_accidente: number, fiscalAccidenteDto: FiscalAccidenteDto): Promise<Accidente> {
+      // Buscar el accidente
+      const accidente = await this.accidenteRepository.findOne({
+        where: { id_accidente: id_accidente },
+        relations: ['estadoAccInc'] // Cargar la relación del estado
+      });
+
+      if (!accidente) {
+        throw new HttpException('Accidente no encontrado', HttpStatus.NOT_FOUND);
+      }
+
+      // Buscar el estado "Favorable"
+      const estadoFavorable = await this.estadoAccIncRepository.findOne({
+        where: { nombre_estado_acc_inc: 'FAVORABLE' }
+      });
+
+      if (!estadoFavorable) {
+        throw new HttpException('Estado "Favorable" no encontrado en el sistema', HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+
+      // Si fiscalizacion es true, cambiar a estado "Favorable"
+      if (fiscalAccidenteDto.fiscalizacion === true) {
+        accidente.estadoAccInc = estadoFavorable;
+        accidente.fiscalizacion = true; // Si tienes este campo en la entity
+      } else {
+
+        accidente.fiscalizacion = false;
+      }
+
+      return await this.accidenteRepository.save(accidente);
+    }
+
 
 //  async inicializarEstadosNecesarios(): Promise<void> {
 //     const estadosRequeridos = ['Devuelto', 'Cancelado'];
