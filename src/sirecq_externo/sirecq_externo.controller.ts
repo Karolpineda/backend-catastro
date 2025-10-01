@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, HttpException, HttpStatus, HttpCode } from '@nestjs/common';
 import { SirecqExternoService } from './sirecq_externo.service';
 import { CreateSirecqExternoDto } from './dto/create-sirecq_externo.dto';
 import { UpdateSirecqExternoDto } from './dto/update-sirecq_externo.dto';
@@ -7,10 +7,33 @@ import { UpdateSirecqExternoDto } from './dto/update-sirecq_externo.dto';
 export class SirecqExternoController {
   constructor(private readonly sirecqExternoService: SirecqExternoService) {}
 
-  @Post()
-  create(@Body() createSirecqExternoDto: CreateSirecqExternoDto) {
-    return this.sirecqExternoService.create(createSirecqExternoDto);
+  // sirecq-externo.controller.ts
+@Post('completo')
+@HttpCode(HttpStatus.CREATED)
+async createCompleto(
+  @Body() createSirecqExternoCompletoDto: CreateSirecqExternoDto
+) {
+  try {
+    const sirecqExterno = await this.sirecqExternoService.createSirecqExternoCompleto(
+      createSirecqExternoCompletoDto
+    );
+    
+    return {
+      success: true,
+      message: 'SirecqExterno y Requerimiento creados exitosamente',
+      data: sirecqExterno
+    };
+  } catch (error) {
+    throw new HttpException(
+      {
+        success: false,
+        message: error.message,
+        data: null
+      },
+      error.status || HttpStatus.INTERNAL_SERVER_ERROR
+    );
   }
+}
 
   @Get()
   findAll() {
