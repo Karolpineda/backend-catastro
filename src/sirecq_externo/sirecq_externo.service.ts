@@ -105,7 +105,6 @@ export class SirecqExternoService {
           tema: createSirecqExternoDto.requerimiento.tema,
           descripcion: createSirecqExternoDto.requerimiento.descripcion,
           fase: createSirecqExternoDto.requerimiento.fase,
-          prioridad: createSirecqExternoDto.requerimiento.prioridad,
           fecha_registro: new Date(),
           estadoRequerimiento: estado,
           categoria: categoria,

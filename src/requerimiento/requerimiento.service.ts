@@ -121,7 +121,6 @@ export class RequerimientoService {
         tema: createDto.tema,
         descripcion: createDto.descripcion,
         fase: createDto.fase,
-        prioridad: createDto.prioridad,
         fecha_registro: new Date(),
         estadoRequerimiento: estado,
         categoria: categoria,
@@ -403,7 +402,7 @@ export class RequerimientoService {
 
           // 4. Actualizar campos simples
           const camposSimples: (keyof UpdateRequerimientoDto)[] = [
-            'no_requerimiento', 'documento', 'tema', 'descripcion', 'fase', 'prioridad'
+            'no_requerimiento', 'documento', 'tema', 'descripcion', 'fase'
           ];
 
           camposSimples.forEach(campo => {
