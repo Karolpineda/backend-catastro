@@ -8,7 +8,7 @@ export class SirecqExternoController {
   constructor(private readonly sirecqExternoService: SirecqExternoService) {}
 
   // sirecq-externo.controller.ts
-@Post('completo')
+@Post()
 @HttpCode(HttpStatus.CREATED)
 async createCompleto(
   @Body() createSirecqExternoCompletoDto: CreateSirecqExternoDto
