@@ -231,6 +231,34 @@ export class UsersRolService {
     }
   }
 
+/// MÉTODO PARA TRAER AL TÉCNICO DE REQUERIMIENTOS PENDIENTE SABER QUIENES SON
+  //  async getTecnicoReque(): Promise<{ id_usuario: number; nombre_completo: string }[]> {
+  //   try {
+  //     const usuarios = await this.userRolRepository.find({
+  //       where: { rol: { id_rol: 3 } },
+  //       relations: ['usuario'],
+  //       select: {
+  //         id_rol_usuario: true,
+  //         usuario: {
+  //           id_usuario: true,
+  //           nombre_usuario: true,
+  //           apellidos_usuario: true,
+  //         },
+  //       },
+  //     });
+
+  //     return usuarios.map(ru => ({
+  //       id_usuario: ru.usuario.id_usuario,
+  //       nombre_completo: `${ru.usuario.nombre_usuario} ${ru.usuario.apellidos_usuario}`,
+  //     }));
+  //   } catch (error) {
+  //     throw new HttpException(
+  //       'Error al obtener analistas de accidentes',
+  //       HttpStatus.INTERNAL_SERVER_ERROR,
+  //     );
+  //   }
+  // }
+
   // Método para obtener el rol del usuario por id_usuario
   async getRolByUsuarioId(id_usuario: number): Promise<{ id_rol: number; nombre_rol: string }> {
     try {

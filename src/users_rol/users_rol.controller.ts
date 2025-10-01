@@ -6,7 +6,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 
 @Controller('users-rol')
-@UseGuards(JwtAuthGuard, RolesGuard)
+//@UseGuards(JwtAuthGuard, RolesGuard)
 export class UsersRolController {
   constructor(private readonly usersRolService: UsersRolService) {}
 
@@ -37,6 +37,11 @@ export class UsersRolController {
   async getAnalistasAccidentes() {
     return await this.usersRolService.getAnalistasAccidentes();
   }
+  // PENDIENTE POR SABER REQUERIMIENTO SIRECQ_EXTERNO
+  // @Get('tecnicoReque')
+  // async getTecnicoReque() {
+  //   return await this.usersRolService.getTecnicoReque();
+  // }
 
   // ✅ Rutas con parámetros en el medio de la URL
   @Get('usuario/:userId')
