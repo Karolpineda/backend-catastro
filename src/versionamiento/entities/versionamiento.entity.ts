@@ -21,9 +21,10 @@ export class Versionamiento {
 
     @Column({nullable: true})
     num_version: number
+
+    @Column({ type: 'text', nullable: true })
+    obs_version: string;
     
-    @Column({nullable: true})
-    observacion: string 
     @CreateDateColumn()
     createdAt: Date;
 

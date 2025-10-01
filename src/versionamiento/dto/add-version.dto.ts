@@ -1,11 +1,7 @@
-// create-versionamiento.dto.ts
+// versionamiento/dto/add-version.dto.ts
 import { IsNumber, IsOptional, IsString, IsDateString } from 'class-validator';
 
-export class CreateVersionamientoDto {
-  @IsOptional()
-  @IsNumber()
-  id_version?: number;
-
+export class AddVersionDto {
   @IsOptional()
   @IsString()
   oficioenviodmi?: string;
@@ -22,9 +18,8 @@ export class CreateVersionamientoDto {
   @IsDateString()
   fech_desp_pt?: Date;
 
-  @IsOptional() // ← AÑADE ESTO si no lo tiene
   @IsNumber()
-  num_version?: number;
+  num_version: number;
 
   @IsOptional()
   @IsString()
