@@ -21,6 +21,9 @@ export class SirecqExterno {
   @Column({ type: 'text', nullable: true })
   observacionesgen: string;
 
+  @Column({ type: 'int', name: 'id_requerimiento', nullable: true, unique: true })
+  id_requerimiento: number;
+
   @CreateDateColumn()
   createdAt: Date;
 
@@ -28,7 +31,11 @@ export class SirecqExterno {
   updatedAt: Date;
 
   // Relación One-to-One con Requerimiento (inversa)
-  @OneToOne(() => Requerimiento, (requerimiento) => requerimiento.sirecqExterno)
+  @OneToOne(() => Requerimiento, (requerimiento) => requerimiento.sirecqExterno, {
+    nullable: true,
+    onDelete: 'CASCADE' // Si se elimina el requerimiento, se elimina SirecqExterno
+  })
+  @JoinColumn({ name: 'id_requerimiento' }) // La foreign key está aquí
   requerimiento: Requerimiento;
 
   // Relación One-to-One con SirecqInterno
