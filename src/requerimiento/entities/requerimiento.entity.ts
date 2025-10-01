@@ -65,13 +65,7 @@ export class Requerimiento {
   @OneToMany(() => RequerimientoVersion, (reqVersion) => reqVersion.requerimiento)
     requerimientoVersiones: RequerimientoVersion[];
 
-
-  @OneToOne(() => SirecqExterno, (sirecqExterno) => sirecqExterno.requerimiento, {
-    nullable: true,
-    cascade: true,
-    onDelete: 'SET NULL'
-  })
-  @JoinColumn({ name: 'id_sirecq_externo' })
+  @OneToOne(() => SirecqExterno, (sirecqExterno) => sirecqExterno.requerimiento)
   sirecqExterno: SirecqExterno;
 
   @CreateDateColumn()

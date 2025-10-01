@@ -10,6 +10,8 @@ import { Categoria } from 'src/categoria/categoria.entity';
 import { Sistema } from 'src/sistema/sistema.entity';
 import { Rol_Usuario } from '../users_rol/entities/users_rol.entity';
 import { CreateRequerimientoDto } from './dto/create-requerimiento.dto';
+import { UpdateRequerimientoDto } from './dto/update-requerimiento.dto';
+import { AddVersionDto } from 'src/versionamiento/dto/add-version.dto';
 
 @Injectable()
 export class RequerimientoService {
@@ -129,21 +131,26 @@ export class RequerimientoService {
       const savedRequerimiento = await queryRunner.manager.save(requerimiento);
 
       // 3. Crear versión inicial automática v1
-      const versionInicial = this.versionamientoRepository.create({
-        num_version: 1,
-        observacion: 'Versión inicial del requerimiento',
-        fechaenvioreq: new Date(),
-      });
+      if (createDto.versiones && createDto.versiones.length > 0) {
+      const versionDto = createDto.versiones[0]; // Tomar la primera versión
+      
+      // En tu servicio, usa esto:
+      const versionData = {
+        ...versionDto,
+        num_version: versionDto.num_version || 1,
+      };
 
+      const versionInicial = this.versionamientoRepository.create(versionData);
       const savedVersion = await queryRunner.manager.save(versionInicial);
 
-      // 4. Crear relación en tabla de rompimiento requerimiento_version
-     const reqVersion = this.reqVersionRepository.create({
+      // Crear relación en tabla de rompimiento
+      const reqVersion = this.reqVersionRepository.create({
         requerimiento: savedRequerimiento,
         versionamiento: savedVersion,
       });
 
       await queryRunner.manager.save(reqVersion);
+    }
 
       await queryRunner.commitTransaction();
 
@@ -195,10 +202,10 @@ export class RequerimientoService {
     }
   }
 
-      async findById(id: number): Promise<Requerimiento> {
+      async findById(id_requerimiento: number): Promise<Requerimiento> {
         try {
           const requerimiento = await this.requerimientoRepository.findOne({
-            where: { id_requerimiento: id },
+            where: { id_requerimiento: id_requerimiento },
             relations: [
               'estadoRequerimiento',
               'categoria',
@@ -212,7 +219,7 @@ export class RequerimientoService {
           });
 
           if (!requerimiento) {
-            throw new HttpException(`Requerimiento con ID ${id} no encontrado`, HttpStatus.NOT_FOUND);
+            throw new HttpException(`Requerimiento con ID ${id_requerimiento} no encontrado`, HttpStatus.NOT_FOUND);
           }
 
           return requerimiento;
@@ -251,7 +258,6 @@ export class RequerimientoService {
             HttpStatus.CONFLICT
           );
         }
-
         // 3. Eliminar en orden: primero las relaciones, luego el requerimiento
         const versionesIds: number[] = [];
         if (requerimiento.requerimientoVersiones && requerimiento.requerimientoVersiones.length > 0) {
@@ -261,22 +267,18 @@ export class RequerimientoService {
             }
           });
         }
-
         // Eliminar relaciones de versionamiento si existen
         if (requerimiento.requerimientoVersiones && requerimiento.requerimientoVersiones.length > 0) {
           await queryRunner.manager.delete(RequerimientoVersion, {
             requerimiento: { id_requerimiento: id_requerimiento }
           });
-          // Remover el logger: this.logger.log(`Eliminadas ${requerimiento.requerimientoVersiones.length} relaciones de versionamiento`);
         }
 
         if (versionesIds.length > 0) {
           for (const idVersion of versionesIds) {
             await queryRunner.manager.delete(Versionamiento, idVersion);
           }
-          // Remover el logger: this.logger.log(`Eliminadas ${versionesIds.length} versiones del versionamiento`);
         }
-
         // 4. Eliminar el requerimiento
         const result = await queryRunner.manager.delete(Requerimiento, id_requerimiento);
 
@@ -286,11 +288,7 @@ export class RequerimientoService {
             HttpStatus.INTERNAL_SERVER_ERROR
           );
         }
-
         await queryRunner.commitTransaction();
-
-        // Remover el logger: this.logger.log(`Requerimiento ${id_requerimiento} eliminado exitosamente con todas sus versiones`);
-
         return {
           message: 'Requerimiento eliminado exitosamente con todas sus versiones',
           id_requerimiento: id_requerimiento
@@ -302,7 +300,6 @@ export class RequerimientoService {
         if (error instanceof HttpException) {
           throw error;
         }
-
         // Manejar error de integridad referencial
         if (error.code === '23503') {
           throw new HttpException(
@@ -310,7 +307,6 @@ export class RequerimientoService {
             HttpStatus.CONFLICT
           );
         }
-
         throw new HttpException(
           `Error al eliminar el requerimiento: ${error.message}`,
           HttpStatus.INTERNAL_SERVER_ERROR
@@ -319,4 +315,286 @@ export class RequerimientoService {
         await queryRunner.release();
       }
     }
+
+      // requerimiento.service.ts
+     async updateRequerimiento(
+        id_requerimiento: number,
+        updateData: UpdateRequerimientoDto
+      ): Promise<Requerimiento> {
+        const queryRunner = this.dataSource.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+
+        try {
+          // 1. Verificar que el requerimiento existe
+          const requerimiento = await this.requerimientoRepository.findOne({
+            where: { id_requerimiento },
+            relations: ['estadoRequerimiento', 'categoria', 'sistema', 'rolUsuario']
+          });
+
+          if (!requerimiento) {
+            throw new HttpException(
+              `Requerimiento con ID ${id_requerimiento} no encontrado`,
+              HttpStatus.NOT_FOUND
+            );
+          }
+
+          // 2. Definir configuración de relaciones con tipado fuerte
+          interface RelacionConfig {
+            repository: any;
+            field: keyof Requerimiento;
+            nombre: string;
+            relations?: string[];
+            whereField?: string;
+          }
+
+          const relacionesConfig: { [key: string]: RelacionConfig } = {
+            id_estado_requerimiento: {
+              repository: this.estadoReqRepository,
+              field: 'estadoRequerimiento',
+              nombre: 'Estado requerimiento',
+              whereField: 'id_estado_requerimiento'
+            },
+            id_categoria: {
+              repository: this.categoriaRepository,
+              field: 'categoria',
+              nombre: 'Categoría',
+              whereField: 'id_categoria'
+            },
+            id_sistema: {
+              repository: this.sistemaRepository,
+              field: 'sistema',
+              nombre: 'Sistema',
+              whereField: 'id_sistema'
+            },
+            id_rol_usuario: {
+              repository: this.rolUsuarioRepository,
+              field: 'rolUsuario',
+              nombre: 'Rol usuario',
+              whereField: 'id_rol_usuario',
+              relations: ['usuario']
+            }
+          };
+
+          // 3. Validar y actualizar relaciones dinámicamente
+          for (const [campo, config] of Object.entries(relacionesConfig)) {
+            const valorCampo = updateData[campo as keyof UpdateRequerimientoDto];
+            
+            if (valorCampo !== undefined && valorCampo !== null) {
+              const whereCondition: any = {};
+              whereCondition[config.whereField || campo] = valorCampo;
+
+              const entidadRelacionada = await config.repository.findOne({
+                where: whereCondition,
+                relations: config.relations || []
+              });
+              
+              if (!entidadRelacionada) {
+                throw new HttpException(
+                  `${config.nombre} con ID ${valorCampo} no encontrado`,
+                  HttpStatus.NOT_FOUND
+                );
+              }
+              
+              // Asignar la entidad relacionada al campo correspondiente
+              (requerimiento as any)[config.field] = entidadRelacionada;
+            }
+          }
+
+          // 4. Actualizar campos simples
+          const camposSimples: (keyof UpdateRequerimientoDto)[] = [
+            'no_requerimiento', 'documento', 'tema', 'descripcion', 'fase', 'prioridad'
+          ];
+
+          camposSimples.forEach(campo => {
+            if (updateData[campo] !== undefined && updateData[campo] !== null) {
+              (requerimiento as any)[campo] = updateData[campo];
+            }
+          });
+
+          // 5. Guardar cambios
+          requerimiento.updatedAt = new Date();
+          await queryRunner.manager.save(requerimiento);
+          await queryRunner.commitTransaction();
+
+          // 6. Retornar requerimiento actualizado
+          const requerimientoActualizado = await this.obtenerRequerimientoCompleto(id_requerimiento);
+          
+          if (!requerimientoActualizado) {
+            throw new HttpException(
+              'Error al recuperar el requerimiento actualizado',
+              HttpStatus.INTERNAL_SERVER_ERROR
+            );
+          }
+
+          return requerimientoActualizado;
+
+        } catch (error) {
+          await queryRunner.rollbackTransaction();
+          
+          // Manejar errores específicos de base de datos
+          if (error instanceof HttpException) {
+            throw error;
+          }
+
+          if ((error as any).code === '23503') {
+            throw new HttpException(
+              'Error de integridad referencial. Verifique los IDs de las entidades relacionadas.',
+              HttpStatus.BAD_REQUEST
+            );
+          }
+
+          if ((error as any).code === '23505') {
+            throw new HttpException(
+              'El número de requerimiento ya existe',
+              HttpStatus.CONFLICT
+            );
+          }
+
+          throw new HttpException(
+            `Error al actualizar el requerimiento: ${(error as Error).message}`,
+            HttpStatus.INTERNAL_SERVER_ERROR
+          );
+        } finally {
+          await queryRunner.release();
+        }
+      }
+
+      private async obtenerRequerimientoCompleto(id_requerimiento: number): Promise<Requerimiento | null> {
+        return await this.requerimientoRepository.findOne({
+          where: { id_requerimiento },
+          relations: [
+            'estadoRequerimiento',
+            'categoria',
+            'sistema',
+            'rolUsuario',
+            'rolUsuario.usuario',
+            'requerimientoVersiones',
+            'requerimientoVersiones.versionamiento',
+            'sirecqExterno'
+          ],
+        });
+      }
+      
+      async addVersionToRequerimiento(
+        id_requerimiento: number,
+        addVersionDto: AddVersionDto
+      ): Promise<Requerimiento> {
+        const queryRunner = this.dataSource.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+
+        try {
+          // 1. Verificar que el requerimiento existe
+          const requerimiento = await this.requerimientoRepository.findOne({
+            where: { id_requerimiento },
+            relations: ['requerimientoVersiones', 'requerimientoVersiones.versionamiento']
+          });
+
+          if (!requerimiento) {
+            throw new HttpException(
+              `Requerimiento con ID ${id_requerimiento} no encontrado`,
+              HttpStatus.NOT_FOUND
+            );
+          }
+
+          // 2. Obtener el último número de versión
+          let ultimoNumVersion = 0;
+          if (requerimiento.requerimientoVersiones && requerimiento.requerimientoVersiones.length > 0) {
+            const versiones = requerimiento.requerimientoVersiones
+              .map(rv => rv.versionamiento.num_version)
+              .filter(num => num !== null) as number[];
+            
+            ultimoNumVersion = Math.max(...versiones);
+          }
+
+          // 3. Crear la nueva versión
+          const nuevaVersionData = {
+            ...addVersionDto,
+            num_version: addVersionDto.num_version || ultimoNumVersion + 1,
+          };
+
+          const nuevaVersion = this.versionamientoRepository.create(nuevaVersionData);
+          const savedVersion = await queryRunner.manager.save(nuevaVersion);
+
+          // 4. Crear relación en tabla de rompimiento
+          const reqVersion = this.reqVersionRepository.create({
+            requerimiento: requerimiento,
+            versionamiento: savedVersion,
+          });
+
+          await queryRunner.manager.save(reqVersion);
+
+          await queryRunner.commitTransaction();
+
+          // 5. Retornar el requerimiento actualizado con todas las versiones
+          const requermientoAddVersion = await this.requerimientoRepository.findOne({
+            where: { id_requerimiento },
+            relations: [
+              'estadoRequerimiento',
+              'categoria',
+              'sistema',
+              'rolUsuario',
+              'rolUsuario.usuario',
+              'requerimientoVersiones',
+              'requerimientoVersiones.versionamiento'
+            ],
+          });
+
+          if (!requermientoAddVersion) {
+            throw new HttpException(`Requerimiento con ID ${id_requerimiento} no encontrado`, HttpStatus.NOT_FOUND);
+          }
+
+          return requermientoAddVersion;
+        } catch (error) {
+          await queryRunner.rollbackTransaction();
+          if (error instanceof HttpException) throw error;
+          
+          throw new HttpException(
+            `Error al agregar versión: ${error.message}`,
+            HttpStatus.INTERNAL_SERVER_ERROR
+          );
+        } finally {
+          await queryRunner.release();
+        }
+      }
+
+      // requerimiento.service.ts
+async getVersionesByRequerimiento(id_requerimiento: number): Promise<Versionamiento[]> {
+  try {
+    const requerimiento = await this.requerimientoRepository.findOne({
+      where: { id_requerimiento },
+      relations: [
+        'requerimientoVersiones',
+        'requerimientoVersiones.versionamiento'
+      ],
+      order: {
+        requerimientoVersiones: {
+          versionamiento: {
+            num_version: 'ASC'
+          }
+        }
+      }
+    });
+
+    if (!requerimiento) {
+      throw new HttpException('Requerimiento no encontrado', HttpStatus.NOT_FOUND);
+    }
+
+    // Extraer solo las versiones
+    const versiones = requerimiento.requerimientoVersiones
+      .map(rv => rv.versionamiento)
+      .filter(version => version !== null);
+
+    return versiones;
+
+  } catch (error) {
+    if (error instanceof HttpException) throw error;
+    throw new HttpException(
+      `Error al obtener versiones: ${error.message}`,
+      HttpStatus.INTERNAL_SERVER_ERROR
+    );
+  }
 }
+
+    }
