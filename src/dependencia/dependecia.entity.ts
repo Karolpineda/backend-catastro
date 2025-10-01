@@ -1,4 +1,4 @@
-import { Column, Entity,PrimaryGeneratedColumn, OneToMany } from "typeorm";
+import { Column, CreateDateColumn, UpdateDateColumn, Entity,PrimaryGeneratedColumn, OneToMany } from "typeorm";
 import { SirecqExterno } from "src/sirecq_externo/entities/sirecq_externo.entity";
 
 @Entity()
@@ -15,7 +15,13 @@ export class Dependencia{
     @Column({nullable: false, default: ''})
     sigla_dependencia: string
 
-    @OneToMany(() => SirecqExterno, (sirecqExterno) => sirecqExterno.dependencia)
-  sirecqExternos: SirecqExterno[];
+    @CreateDateColumn()
+    createdAt: Date;
 
+    @UpdateDateColumn()
+    updatedAt: Date;
+
+  // Relación One-to-Many con SirecqExterno
+  @OneToMany(() => SirecqExterno, (sirecqExterno) => sirecqExterno.dependencia)
+  sirecqExternos: SirecqExterno[];
 }
