@@ -306,12 +306,11 @@ export class AccidenteService {
         );
       }
 
-      const result = await this.accidenteRepository.delete(id_accidente);
-
+      const result = await this.accidenteRepository.delete({ 
+            id_accidente: id_accidente 
+          });
       if (result.affected === 0) {
-        throw new HttpException(
-          'No se pudo eliminar el accidente',
-          HttpStatus.INTERNAL_SERVER_ERROR,
+        throw new HttpException( 'No se pudo eliminar el accidente', HttpStatus.INTERNAL_SERVER_ERROR,
         );
       }
 

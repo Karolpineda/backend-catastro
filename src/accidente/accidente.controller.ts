@@ -114,7 +114,7 @@ export class AccidenteController {
   }
 
   @Delete(':id_accidente')
-  async remove(@Param('tramite') id_accidente: number) {
+  async remove(@Param('id_accidente') id_accidente: number) {
     try {
       return await this.accidenteService.remove(id_accidente);
     } catch (error) {
