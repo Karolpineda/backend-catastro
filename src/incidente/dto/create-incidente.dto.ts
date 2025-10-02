@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsNumber, IsDate, IsBase64, IsArray, ValidateNested } from 'class-validator';
+import { IsOptional, IsString, IsNumber, IsDate, IsBase64, IsArray, ValidateNested, IsDateString } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CreateUsuarioIncidenteDto } from 'src/usuario_incidente/dto/create-usuario_incidente.dto';
 
@@ -16,8 +16,7 @@ export class CreateIncidenteDto {
   id_zona?: number;
 
   @IsOptional()
-  @IsDate()
-  @Type(() => Date)
+  @IsDateString()
   fechaingresoerror?: Date;
 
   @IsOptional()
