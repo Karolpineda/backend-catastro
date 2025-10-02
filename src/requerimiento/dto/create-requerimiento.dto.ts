@@ -36,9 +36,6 @@ export class CreateRequerimientoDto {
   @IsString()
   fase: string;
 
-  @IsInt()
-  prioridad: number;
-
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })

@@ -29,9 +29,6 @@ export class Requerimiento {
   @Column({ type: 'varchar', length: 100, name: 'fase', nullable: true })
   fase: string;
 
-  @Column({ type: 'int', name: 'prioridad', nullable: true })
-  prioridad: number;
-
   // Columnas para las claves foráneas
   @Column({ type: 'int', name: 'id_estado_requerimiento', nullable: true  })
   id_estado_requerimiento: number;
