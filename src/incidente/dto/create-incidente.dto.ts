@@ -5,6 +5,14 @@ import { CreateUsuarioIncidenteDto } from 'src/usuario_incidente/dto/create-usua
 export class CreateIncidenteDto {
   @IsOptional()
   @IsNumber()
+  id_analista?: number;
+
+  @IsOptional()
+  @IsNumber()
+  id_tecnico?: number;
+  
+  @IsOptional()
+  @IsNumber()
   id_zona?: number;
 
   @IsOptional()

@@ -19,6 +19,16 @@ export class UsersRolService {
     private readonly rolRepository: Repository<Rol>,
   ) {}
 
+    /**
+   * Busca el Rol_Usuario por id_usuario y id_rol
+   */
+  async findByUsuarioAndRol(id_usuario: number, id_rol: number): Promise<Rol_Usuario | null> {
+    return this.userRolRepository.findOne({
+      where: { usuario: { id_usuario }, rol: { id_rol } },
+      relations: ['usuario', 'rol'],
+    });
+  }
+
   async create(createUsersRolDto: CreateUsersRolDto) {
     // Verificar si el usuario existe
     const usuario = await this.usuarioRepository.findOne({
