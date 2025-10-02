@@ -1,48 +1,114 @@
 import { HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository,Not } from 'typeorm';
+import { Repository, Not } from 'typeorm';
 import { Incidente } from './entities/incidente.entity';
 import { CreateIncidenteDto } from './dto/create-incidente.dto';
 import { UpdateIncidenteDto } from './dto/update-incidente.dto';
-import { UpdateIncidenteEstadoDto} from './dto/update-incidente-estado.dto';
+import { UpdateIncidenteEstadoDto } from './dto/update-incidente-estado.dto';
 import { Zona } from 'src/zona/zona.entity';
 import { Estado_acc_inc } from 'src/estado_acc_inc/estado_acc_inc.entity';
-import { UsersRolService} from 'src/users_rol/users_rol.service'
-import { UsuarioIncidente } from 'src/usuario_incidente/entities/usuario_incidente.entity'
+import { UsersRolService } from 'src/users_rol/users_rol.service';
+import { UsuarioIncidente } from 'src/usuario_incidente/entities/usuario_incidente.entity';
 
 @Injectable()
 export class IncidenteService {
-  
-  constructor (
-    @InjectRepository(Incidente) 
+
+  constructor(
+    @InjectRepository(Incidente)
     private incidenteRepository: Repository<Incidente>,
-    @InjectRepository(Zona) 
+    @InjectRepository(Zona)
     private zonaRepository: Repository<Zona>,
-    @InjectRepository(Estado_acc_inc) 
+    @InjectRepository(Estado_acc_inc)
     private estadoAccIncRepository: Repository<Estado_acc_inc>,
     @InjectRepository(UsuarioIncidente)
     private usuarioIncidenteRepository: Repository<UsuarioIncidente>,
-
     private usersRolService: UsersRolService,
-  ){}
+  ) {}
 
+  /** =========================
+   *  Utilidades
+   *  ========================= */
   private esBase64Valido(str: string): boolean {
     try {
-      if (!str || typeof str !== 'string') {
-        return false;
-      }
-      const base64WithoutPrefix = str.includes('base64,') 
-        ? str.split('base64,')[1] 
-        : str;
-
+      if (!str || typeof str !== 'string') return false;
+      const base64WithoutPrefix = str.includes('base64,') ? str.split('base64,')[1] : str;
       const buffer = Buffer.from(base64WithoutPrefix, 'base64');
-      const base64Converted = buffer.toString('base64');
-      return base64Converted === base64WithoutPrefix;
+      return buffer.toString('base64') === base64WithoutPrefix;
     } catch {
       return false;
     }
   }
 
+  /** Normaliza fechas para evitar que “bajen un día” por TZ */
+  private normalizeDateNoTZ(input?: string | Date | null): Date | null {
+    if (!input) return null;
+    // Si llega 'YYYY-MM-DD', fuerzo mediodía local para evitar corrimientos
+    if (typeof input === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(input)) {
+      const [y, m, d] = input.split('-').map(Number);
+      const dt = new Date(y, m - 1, d, 12, 0, 0, 0); // 12:00 local
+      return dt;
+    }
+    const d = new Date(input);
+    if (isNaN(d.getTime())) return null;
+    d.setHours(12, 0, 0, 0);
+    return d;
+    // Nota: si tus columnas en DB son DATE (no timestamptz), esto es suficiente.
+    // Si son timestamptz, igualmente mitigamos el “day off” al fijar 12:00.
+  }
+
+  /** Upsert por rol (2 = Analista, 7 = Técnico) */
+  private async upsertUsuarioIncidentePorRol(
+    idIncidente: number,
+    idUsuario: number | null | undefined,
+    roleId: 2 | 7,
+  ): Promise<void> {
+    // Obtengo asignaciones actuales del incidente
+    const asignacionesActuales = await this.usuarioIncidenteRepository.find({
+      where: { incidente: { id_incidente: idIncidente } },
+      relations: ['rolUsuario', 'rolUsuario.rol'],
+    });
+
+    const existente = asignacionesActuales.find(a => a.rolUsuario?.rol?.id_rol === roleId);
+
+    // Si no enviaron usuario, elimino la asignación existente (si hay)
+    if (!idUsuario) {
+      if (existente) {
+        await this.usuarioIncidenteRepository.delete(existente.id_usuario_incidente);
+      }
+      return;
+    }
+
+    // Busco el rol_usuario correcto para ese usuario y rol
+    const rolUsuario = await this.usersRolService.findByUsuarioAndRol(idUsuario, roleId);
+    if (!rolUsuario) {
+      throw new HttpException(
+        `No se encontró Rol_Usuario para usuario=${idUsuario} y rol=${roleId}`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    if (existente) {
+      // Si ya existe y es el mismo, no hago nada
+      if (existente.rolUsuario?.id_rol_usuario === rolUsuario.id_rol_usuario) return;
+      // Si cambia, actualizo
+      await this.usuarioIncidenteRepository.update(
+        { id_usuario_incidente: existente.id_usuario_incidente },
+        { rolUsuario: { id_rol_usuario: rolUsuario.id_rol_usuario } as any },
+      );
+      return;
+    }
+
+    // No existía asignación para ese rol → creo una nueva
+    const nuevo = this.usuarioIncidenteRepository.create({
+      incidente: { id_incidente: idIncidente } as any,
+      rolUsuario: { id_rol_usuario: rolUsuario.id_rol_usuario } as any,
+    });
+    await this.usuarioIncidenteRepository.save(nuevo);
+  }
+
+  /** =========================
+   *  Queries auxiliares
+   *  ========================= */
   async getTecnicoIncidentes() {
     return this.usersRolService.getTecnicoIncidentes();
   }
@@ -51,16 +117,17 @@ export class IncidenteService {
     return this.usersRolService.getAnalistasIncidentes();
   }
 
+  /** =========================
+   *  Create
+   *  ========================= */
   async createIncidente(createIncidenteDto: CreateIncidenteDto): Promise<Incidente> {
     const queryRunner = this.incidenteRepository.manager.connection.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
-      // 1. VALIDACIONES
-      const incidenteFound = await this.incidenteRepository.findOne({ 
-        where: { no_incidente: createIncidenteDto.no_incidente} 
-      });
+      // 1) Validaciones
+      const incidenteFound = await this.incidenteRepository.findOne({ where: { no_incidente: createIncidenteDto.no_incidente } });
       if (incidenteFound) throw new HttpException('Número de incidente ya existe', HttpStatus.CONFLICT);
 
       const zonaFound = await this.zonaRepository.findOne({ where: { id_zona: createIncidenteDto.id_zona } });
@@ -72,40 +139,20 @@ export class IncidenteService {
       if (!createIncidenteDto.no_incidente) throw new HttpException('Número de incidente obligatorio', HttpStatus.BAD_REQUEST);
       if (createIncidenteDto.aniosirecq > new Date().getFullYear() + 1) throw new HttpException('Año no puede ser futuro', HttpStatus.BAD_REQUEST);
 
-      // 2. VALIDAR ASIGNACIONES
-      if (createIncidenteDto.asignaciones && createIncidenteDto.asignaciones.length > 0) {
-        for (const asignacion of createIncidenteDto.asignaciones) {
-          const rolUsuarioValido = await this.usersRolService.findOne(asignacion.idRolUsuario);
-          if (!rolUsuarioValido) throw new HttpException(`RolUsuario ${asignacion.idRolUsuario} no existe`, HttpStatus.BAD_REQUEST);
-          if (rolUsuarioValido.rol.id_rol !== 2 && rolUsuarioValido.rol.id_rol !== 7) {
-            throw new HttpException(`RolUsuario ${asignacion.idRolUsuario} no tiene rol válido`, HttpStatus.BAD_REQUEST);
-          }
-        }
-      }
-
-      function fixDateToNoTimezone(date: string | Date | undefined): Date | undefined {
-        if (!date) return undefined;
-        const d = new Date(date);
-        d.setHours(12, 0, 0, 0); // Fuerza a mediodía
-        return d;
-      }
-
-
-      // 3. CREAR INCIDENTE
+      // 2) Construcción
       const incidenteData: Partial<Incidente> = {
         no_incidente: createIncidenteDto.no_incidente.trim().toUpperCase(),
-        fechaingresoerror: fixDateToNoTimezone(createIncidenteDto.fechaingresoerror) || new Date(),
+        fechaingresoerror: this.normalizeDateNoTZ(createIncidenteDto.fechaingresoerror) || new Date(),
         tipologia: createIncidenteDto.tipologia,
         descripcionerror: createIncidenteDto.descripcionerror,
         aniosirecq: createIncidenteDto.aniosirecq,
-        zona: zonaFound,                    
+        zona: zonaFound,
         estado_acc_inc: estadoPendiente,
         createdAt: new Date(),
         updatedAt: new Date(),
-        // ===== NEW =====
         mensajeerror: createIncidenteDto.mensajeerror ?? null,
         obs_incidente: createIncidenteDto.obs_incidente ?? null,
-        fech_solucion: fixDateToNoTimezone(createIncidenteDto.fech_solucion) ?? null,
+        fech_solucion: this.normalizeDateNoTZ(createIncidenteDto.fech_solucion),
       };
 
       if (createIncidenteDto.error_img) {
@@ -116,111 +163,43 @@ export class IncidenteService {
       const incidente = this.incidenteRepository.create(incidenteData);
       const incidenteGuardado = await queryRunner.manager.save(incidente);
 
-      // === ASIGNAR ANALISTA (buscando id_rol_usuario por id_usuario y rol 2) ===
+      // 3) Asignaciones directas por rol (analista / técnico)
       if (createIncidenteDto.id_analista) {
-        const analistaRolUsuario = await this.usersRolService.findByUsuarioAndRol(createIncidenteDto.id_analista, 2);
-        if (!analistaRolUsuario) throw new HttpException('No se encontró un Rol_Usuario para el analista con ese usuario y rol', HttpStatus.BAD_REQUEST);
-        const usuarioIncidenteAnalista = this.usuarioIncidenteRepository.create({
-          incidente: { id_incidente: incidenteGuardado.id_incidente },
-          rolUsuario: { id_rol_usuario: analistaRolUsuario.id_rol_usuario }
-        });
-        await queryRunner.manager.save(usuarioIncidenteAnalista);
+        await this.upsertUsuarioIncidentePorRol(incidenteGuardado.id_incidente, createIncidenteDto.id_analista, 2);
+      }
+      if (createIncidenteDto.id_tecnico) {
+        await this.upsertUsuarioIncidentePorRol(incidenteGuardado.id_incidente, createIncidenteDto.id_tecnico, 7);
       }
 
-      // === ASIGNAR TÉCNICO (buscando id_rol_usuario por id_usuario y rol 7) ===
-      if (createIncidenteDto.id_tecnico) {
-        const tecnicoRolUsuario = await this.usersRolService.findByUsuarioAndRol(createIncidenteDto.id_tecnico, 7);
-        if (!tecnicoRolUsuario) throw new HttpException('No se encontró un Rol_Usuario para el técnico con ese usuario y rol', HttpStatus.BAD_REQUEST);
-        const usuarioIncidenteTecnico = this.usuarioIncidenteRepository.create({
-          incidente: { id_incidente: incidenteGuardado.id_incidente },
-          rolUsuario: { id_rol_usuario: tecnicoRolUsuario.id_rol_usuario }
-        });
-        await queryRunner.manager.save(usuarioIncidenteTecnico);
-      }
-      // 4. ASIGNACIONES
-      if (createIncidenteDto.asignaciones && createIncidenteDto.asignaciones.length > 0) {
+      // 4) Asignaciones libres (si las sigues usando)
+      if (createIncidenteDto.asignaciones?.length) {
         for (const asignacion of createIncidenteDto.asignaciones) {
           const rolUsuarioValido = await this.usersRolService.findOne(asignacion.idRolUsuario);
           if (!rolUsuarioValido) throw new HttpException(`RolUsuario ${asignacion.idRolUsuario} no existe`, HttpStatus.BAD_REQUEST);
-          
-          const usuarioIncidenteData = {
-            incidente: { id_incidente: incidenteGuardado.id_incidente },
-            rolUsuario: { id_rol_usuario: asignacion.idRolUsuario }
-          };
-          const usuarioIncidente = this.usuarioIncidenteRepository.create(usuarioIncidenteData);
+          const usuarioIncidente = this.usuarioIncidenteRepository.create({
+            incidente: { id_incidente: incidenteGuardado.id_incidente } as any,
+            rolUsuario: { id_rol_usuario: asignacion.idRolUsuario } as any,
+          });
           await queryRunner.manager.save(usuarioIncidente);
         }
       }
 
       await queryRunner.commitTransaction();
 
-      // 5. RETORNAR COMPLETO
+      // 5) Retornar completo
       const incidenteCompleto = await this.incidenteRepository.findOne({
         where: { id_incidente: incidenteGuardado.id_incidente },
         relations: [
-          'zona', 
+          'zona',
           'estado_acc_inc',
           'usuariosIncidente',
           'usuariosIncidente.rolUsuario',
           'usuariosIncidente.rolUsuario.usuario',
-          'usuariosIncidente.rolUsuario.rol'
+          'usuariosIncidente.rolUsuario.rol',
         ],
       });
-
       if (!incidenteCompleto) throw new NotFoundException('Incidente no encontrado después de guardar');
-
-      type UsuarioRolInfo = {
-        id_usuario_incidente: number;
-        id_rol_usuario: number;
-        id_usuario: number;
-        nombre_usuario: string;
-        apellidos_usuario: string;
-        correo_usuario: string;
-        id_rol: number;
-        nombre_rol: string;
-      } | null;
-
-      const response: typeof incidenteCompleto & {
-        tecnico: UsuarioRolInfo;
-        analista: UsuarioRolInfo;
-      } = {
-        ...incidenteCompleto,
-        tecnico: null,
-        analista: null,
-      };
-
-      if (incidenteCompleto.usuariosIncidente && incidenteCompleto.usuariosIncidente.length > 0) {
-        const tecnico = incidenteCompleto.usuariosIncidente.find(ui => ui.rolUsuario.rol.id_rol === 7);
-        const analista = incidenteCompleto.usuariosIncidente.find(ui => ui.rolUsuario.rol.id_rol === 2);
-
-        if (tecnico) {
-          response.tecnico = {
-            id_usuario_incidente: tecnico.id_usuario_incidente,
-            id_rol_usuario: tecnico.rolUsuario.id_rol_usuario,
-            id_usuario: tecnico.rolUsuario.usuario.id_usuario,
-            nombre_usuario: tecnico.rolUsuario.usuario.nombre_usuario,
-            apellidos_usuario: tecnico.rolUsuario.usuario.apellidos_usuario,
-            correo_usuario: tecnico.rolUsuario.usuario.correo_usuario,
-            id_rol: tecnico.rolUsuario.rol.id_rol,
-            nombre_rol: tecnico.rolUsuario.rol.nombre_rol
-          };
-        }
-
-        if (analista) {
-          response.analista = {
-            id_usuario_incidente: analista.id_usuario_incidente,
-            id_rol_usuario: analista.rolUsuario.id_rol_usuario,
-            id_usuario: analista.rolUsuario.usuario.id_usuario,
-            nombre_usuario: analista.rolUsuario.usuario.nombre_usuario,
-            apellidos_usuario: analista.rolUsuario.usuario.apellidos_usuario,
-            correo_usuario: analista.rolUsuario.usuario.correo_usuario,
-            id_rol: analista.rolUsuario.rol.id_rol,
-            nombre_rol: analista.rolUsuario.rol.nombre_rol
-          };
-        }
-      }
-
-      return response;
+      return incidenteCompleto;
 
     } catch (error) {
       await queryRunner.rollbackTransaction();
@@ -231,45 +210,33 @@ export class IncidenteService {
     }
   }
 
+  /** =========================
+   *  List / Get
+   *  ========================= */
   async findAllIncidente(): Promise<any[]> {
     try {
       const incidentes = await this.incidenteRepository.find({
-        select: [
-          'id_incidente',
-          'no_incidente',
-          'fechaingresoerror',
-          'descripcionerror',
-          'aniosirecq',
-          'tipologia',
-          'createdAt',
-        ],
+        select: ['id_incidente','no_incidente','fechaingresoerror','descripcionerror','aniosirecq','tipologia','createdAt'],
         relations: ['zona', 'estado_acc_inc'],
         order: { createdAt: 'DESC' },
       });
 
-      return incidentes.map((i) => ({
+      return incidentes.map(i => ({
         id_incidente: i.id_incidente,
         no_incidente: i.no_incidente,
         fechaingresoerror: i.fechaingresoerror,
         descripcionerror: i.descripcionerror,
         aniosirecq: i.aniosirecq,
         tipologia: i.tipologia,
-        zona: i.zona
-          ? { id_zona: i.zona.id_zona, nombre_zona: i.zona.nombre_zona }
-          : null,
-        estado_acc_inc: i.estado_acc_inc
-          ? {
-              id_estado_acc_inc: i.estado_acc_inc.id_estado_acc_inc,
-              nombre_estado_acc_inc: i.estado_acc_inc.nombre_estado_acc_inc,
-            }
-          : null,
+        zona: i.zona ? { id_zona: i.zona.id_zona, nombre_zona: i.zona.nombre_zona } : null,
+        estado_acc_inc: i.estado_acc_inc ? {
+          id_estado_acc_inc: i.estado_acc_inc.id_estado_acc_inc,
+          nombre_estado_acc_inc: i.estado_acc_inc.nombre_estado_acc_inc,
+        } : null,
       }));
     } catch (error) {
       console.error('❌ Error en findAllIncidente:', error);
-      throw new HttpException(
-        'Error al obtener los incidentes: ' + error.message,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      throw new HttpException('Error al obtener los incidentes: ' + error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -286,19 +253,15 @@ export class IncidenteService {
           'usuariosIncidente.rolUsuario.rol',
         ],
       });
+      if (!incidente) throw new HttpException(`Incidente ${id_incidente} no encontrado`, HttpStatus.NOT_FOUND);
 
-      if (!incidente) {
-        throw new HttpException(`Incidente ${id_incidente} no encontrado`, HttpStatus.NOT_FOUND);
-      }
-
-      const asignaciones = (incidente.usuariosIncidente || []).map((ui) => {
-        const rolUsuario = ui.rolUsuario || null;
-        const usuario = rolUsuario?.usuario || null;
-        const rol = rolUsuario?.rol || null;
-
+      const asignaciones = (incidente.usuariosIncidente || []).map(ui => {
+        const ru = ui.rolUsuario || null;
+        const usuario = ru?.usuario || null;
+        const rol = ru?.rol || null;
         return {
           id_usuario_incidente: (ui as any).id_usuario_incidente ?? null,
-          id_rol_usuario: rolUsuario?.id_rol_usuario ?? null,
+          id_rol_usuario: ru?.id_rol_usuario ?? null,
           id_usuario: usuario?.id_usuario ?? null,
           nombre_usuario: usuario?.nombre_usuario ?? null,
           apellidos_usuario: usuario?.apellidos_usuario ?? null,
@@ -308,18 +271,10 @@ export class IncidenteService {
         };
       });
 
-      const matchRole = (roleName?: string, rx?: RegExp) =>
-        !!(roleName && rx && rx.test(roleName));
+      const tecnico = asignaciones.find(a => /\bT[EÉ]?CNICO\b/i.test(a?.nombre_rol || '')) || null;
+      const analista = asignaciones.find(a => /\bANALISTA\b/i.test(a?.nombre_rol || '')) || null;
 
-      const tecnico = asignaciones.find((a) =>
-        matchRole(a.nombre_rol, /\bT[EÉ]CNICO\b/i) || matchRole(a.nombre_rol, /\bTECNICO\b/i)
-      ) || null;
-
-      const analista = asignaciones.find((a) =>
-        matchRole(a.nombre_rol, /\bANALISTA\b/i)
-      ) || null;
-
-      const payload = {
+      return {
         id_incidente: incidente.id_incidente,
         no_incidente: incidente.no_incidente,
         fechaingresoerror: incidente.fechaingresoerror,
@@ -329,20 +284,16 @@ export class IncidenteService {
         mensajeerror: incidente.mensajeerror,
         tipologia: incidente.tipologia,
         obs_incidente: incidente.obs_incidente,
-        zona: incidente.zona
-          ? {
-              id_zona: incidente.zona.id_zona,
-              nombre_zona: incidente.zona.nombre_zona,
-              ubi_zona: incidente.zona.ubi_zona,
-            }
-          : null,
-        estado_acc_inc: incidente.estado_acc_inc
-          ? {
-              id_estado_acc_inc: incidente.estado_acc_inc.id_estado_acc_inc,
-              nombre_estado_acc_inc: incidente.estado_acc_inc.nombre_estado_acc_inc,
-              descrip_estado_acc_inc: incidente.estado_acc_inc.descrip_estado_acc_inc,
-            }
-          : null,
+        zona: incidente.zona ? {
+          id_zona: incidente.zona.id_zona,
+          nombre_zona: incidente.zona.nombre_zona,
+          ubi_zona: incidente.zona.ubi_zona,
+        } : null,
+        estado_acc_inc: incidente.estado_acc_inc ? {
+          id_estado_acc_inc: incidente.estado_acc_inc.id_estado_acc_inc,
+          nombre_estado_acc_inc: incidente.estado_acc_inc.nombre_estado_acc_inc,
+          descrip_estado_acc_inc: incidente.estado_acc_inc.descrip_estado_acc_inc,
+        } : null,
         id_tecnico: tecnico ? tecnico.id_usuario : null,
         id_analista: analista ? analista.id_usuario : null,
         tecnico,
@@ -350,64 +301,55 @@ export class IncidenteService {
         error_img: incidente.error_img ?? null,
         _rawIncidente: incidente,
       };
-
-      return payload;
     } catch (error) {
       if (error instanceof HttpException) throw error;
-      throw new HttpException(
-        error.message || 'Error al obtener el incidente con usuarios',
-        HttpStatus.INTERNAL_SERVER_ERROR
-      );
+      throw new HttpException(error.message || 'Error al obtener el incidente con usuarios', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
   async getViewIncidente(): Promise<any[]> {
     const incidentes = await this.incidenteRepository.find({
-      relations: ['estado_acc_inc'], 
+      relations: ['estado_acc_inc'],
       order: { createdAt: 'DESC' },
     });
-
     return incidentes.map(i => ({
       no_incidente: i.no_incidente,
       fecha: i.fechaingresoerror,
-      estado: i.estado_acc_inc?.nombre_estado_acc_inc, 
+      estado: i.estado_acc_inc?.nombre_estado_acc_inc,
     }));
   }
 
+  /** =========================
+   *  Update
+   *  ========================= */
   async updateIncidente(id_incidente: number, updateIncidenteDto: UpdateIncidenteDto): Promise<Incidente> {
     const queryRunner = this.incidenteRepository.manager.connection.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
-      // 1. EXISTE
       const incidente = await this.incidenteRepository.findOne({
         where: { id_incidente },
         relations: ['zona', 'estado_acc_inc', 'usuariosIncidente'],
       });
       if (!incidente) throw new NotFoundException(`Incidente ${id_incidente} no encontrado`);
-      if (!incidente.id_incidente) {
-        throw new HttpException('No se pudo obtener el ID del incidente', HttpStatus.INTERNAL_SERVER_ERROR);
-      }
 
-      // 2. ZONA
+      // Zona
       if (updateIncidenteDto.id_zona) {
         const zonaFound = await this.zonaRepository.findOne({ where: { id_zona: updateIncidenteDto.id_zona } });
         if (!zonaFound) throw new HttpException('Zona no existe', HttpStatus.NOT_FOUND);
         incidente.zona = zonaFound;
       }
 
-      // 3. VALIDACIONES
+      // Número (único)
       if (updateIncidenteDto.no_incidente) {
-        const incidenteConNuevoNumero = await this.incidenteRepository.findOne({ 
-          where: { 
+        const repetido = await this.incidenteRepository.findOne({
+          where: {
             no_incidente: updateIncidenteDto.no_incidente.trim().toUpperCase(),
-            id_incidente: Not(incidente.id_incidente)
-          } 
+            id_incidente: Not(incidente.id_incidente),
+          },
         });
-        if (incidenteConNuevoNumero) {
-          throw new HttpException('Número de incidente ya existe', HttpStatus.CONFLICT);
-        }
+        if (repetido) throw new HttpException('Número de incidente ya existe', HttpStatus.CONFLICT);
         incidente.no_incidente = updateIncidenteDto.no_incidente.trim().toUpperCase();
       }
 
@@ -415,23 +357,23 @@ export class IncidenteService {
         throw new HttpException('Año no puede ser futuro', HttpStatus.BAD_REQUEST);
       }
 
-      // 4. CAMPOS PRINCIPALES
+      // Campos principales
       incidente.tipologia = updateIncidenteDto.tipologia ?? incidente.tipologia;
       incidente.descripcionerror = updateIncidenteDto.descripcionerror ?? incidente.descripcionerror;
       incidente.aniosirecq = updateIncidenteDto.aniosirecq ?? incidente.aniosirecq;
 
-      // ===== NEW =====
+      // Fechas y campos de texto
       if (updateIncidenteDto.fechaingresoerror !== undefined) {
-        incidente.fechaingresoerror = updateIncidenteDto.fechaingresoerror;
+        incidente.fechaingresoerror = this.normalizeDateNoTZ(updateIncidenteDto.fechaingresoerror) ?? incidente.fechaingresoerror;
+      }
+      if (updateIncidenteDto.fech_solucion !== undefined) {
+        incidente.fech_solucion = this.normalizeDateNoTZ(updateIncidenteDto.fech_solucion);
       }
       if (updateIncidenteDto.mensajeerror !== undefined) {
         incidente.mensajeerror = updateIncidenteDto.mensajeerror;
       }
       if (updateIncidenteDto.obs_incidente !== undefined) {
         incidente.obs_incidente = updateIncidenteDto.obs_incidente;
-      }
-      if (updateIncidenteDto.fech_solucion !== undefined) {
-        incidente.fech_solucion = updateIncidenteDto.fech_solucion;
       }
 
       incidente.updatedAt = new Date();
@@ -443,71 +385,70 @@ export class IncidenteService {
         incidente.error_img = Buffer.from(updateIncidenteDto.error_img, 'base64');
       }
 
-      // 5. ASIGNACIONES
-      if (updateIncidenteDto.asignaciones !== undefined) {
-        if (updateIncidenteDto.asignaciones.length > 0) {
-          for (const asignacion of updateIncidenteDto.asignaciones) {
-            const rolUsuarioValido = await this.usersRolService.findOne(asignacion.idRolUsuario);
-            if (!rolUsuarioValido) {
-              throw new HttpException(`RolUsuario ${asignacion.idRolUsuario} no existe`, HttpStatus.BAD_REQUEST);
-            }
-            if (rolUsuarioValido.rol.id_rol !== 2 && rolUsuarioValido.rol.id_rol !== 7) {
-              throw new HttpException(`RolUsuario ${asignacion.idRolUsuario} no tiene rol válido`, HttpStatus.BAD_REQUEST);
-            }
-          }
-        }
+      // Upsert por rol para técnico/analista (si vienen en el DTO)
+      if ('id_tecnico' in updateIncidenteDto) {
+        await this.upsertUsuarioIncidentePorRol(incidente.id_incidente, updateIncidenteDto.id_tecnico as any, 7);
+      }
+      if ('id_analista' in updateIncidenteDto) {
+        await this.upsertUsuarioIncidentePorRol(incidente.id_incidente, updateIncidenteDto.id_analista as any, 2);
+      }
 
+      // Asignaciones libres (si sigues usando este arreglo)
+      if (updateIncidenteDto.asignaciones !== undefined) {
         const asignacionesActuales = await this.usuarioIncidenteRepository.find({
           where: { incidente: { id_incidente: incidente.id_incidente } },
-          relations: ['rolUsuario']
+          relations: ['rolUsuario'],
         });
 
         const connection = this.incidenteRepository.manager.connection;
 
+        // Valida cada idRolUsuario
+        for (const a of updateIncidenteDto.asignaciones) {
+          const ru = await this.usersRolService.findOne(a.idRolUsuario);
+          if (!ru) throw new HttpException(`RolUsuario ${a.idRolUsuario} no existe`, HttpStatus.BAD_REQUEST);
+          if (ru.rol.id_rol !== 2 && ru.rol.id_rol !== 7) {
+            throw new HttpException(`RolUsuario ${a.idRolUsuario} no tiene rol válido`, HttpStatus.BAD_REQUEST);
+          }
+        }
+
+        // Sincroniza (posicional como lo tenías)
         const minLength = Math.min(asignacionesActuales.length, updateIncidenteDto.asignaciones.length);
         for (let i = 0; i < minLength; i++) {
           await connection.query(
             `UPDATE usuario_incidente SET id_rol_usuario = $1 WHERE id_usuario_incidente = $2`,
-            [updateIncidenteDto.asignaciones[i].idRolUsuario, asignacionesActuales[i].id_usuario_incidente]
+            [updateIncidenteDto.asignaciones[i].idRolUsuario, asignacionesActuales[i].id_usuario_incidente],
           );
         }
-
         for (let i = minLength; i < updateIncidenteDto.asignaciones.length; i++) {
           await connection.query(
             `INSERT INTO usuario_incidente (id_incidente, id_rol_usuario) VALUES ($1, $2)`,
-            [incidente.id_incidente, updateIncidenteDto.asignaciones[i].idRolUsuario]
+            [incidente.id_incidente, updateIncidenteDto.asignaciones[i].idRolUsuario],
           );
         }
-
         for (let i = minLength; i < asignacionesActuales.length; i++) {
           await connection.query(
             `DELETE FROM usuario_incidente WHERE id_usuario_incidente = $1`,
-            [asignacionesActuales[i].id_usuario_incidente]
+            [asignacionesActuales[i].id_usuario_incidente],
           );
         }
       }
 
-      // 6. GUARDAR
       const incidenteActualizado = await queryRunner.manager.save(incidente);
       await queryRunner.commitTransaction();
 
-      // 7. RETORNAR COMPLETO
-      const incidenteActualizadoCompleto = await this.incidenteRepository.findOne({
+      const completo = await this.incidenteRepository.findOne({
         where: { id_incidente: incidenteActualizado.id_incidente },
         relations: [
-          'zona', 
+          'zona',
           'estado_acc_inc',
           'usuariosIncidente',
           'usuariosIncidente.rolUsuario',
           'usuariosIncidente.rolUsuario.usuario',
-          'usuariosIncidente.rolUsuario.rol'
+          'usuariosIncidente.rolUsuario.rol',
         ],
       });
-
-      if (!incidenteActualizadoCompleto) {
-        throw new NotFoundException('Incidente no encontrado después de actualizar');
-      }
-      return incidenteActualizadoCompleto;
+      if (!completo) throw new NotFoundException('Incidente no encontrado después de actualizar');
+      return completo;
 
     } catch (error) {
       await queryRunner.rollbackTransaction();
@@ -519,18 +460,16 @@ export class IncidenteService {
     }
   }
 
+  /** =========================
+   *  Remove / Filtros / Estado
+   *  ========================= */
   async remove(id_incidente: number): Promise<void> {
     try {
       const incidente = await this.findNoIncidente(id_incidente);
       await this.incidenteRepository.remove(incidente);
     } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-      throw new HttpException(
-        'Error al eliminar el incidente: ' + error.message,
-        HttpStatus.INTERNAL_SERVER_ERROR
-      );
+      if (error instanceof NotFoundException) throw error;
+      throw new HttpException('Error al eliminar el incidente: ' + error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -545,13 +484,8 @@ export class IncidenteService {
         order: { createdAt: 'DESC' },
       });
     } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      throw new HttpException(
-        'Error al obtener incidentes por zona: ' + error.message,
-        HttpStatus.INTERNAL_SERVER_ERROR
-      );
+      if (error instanceof HttpException) throw error;
+      throw new HttpException('Error al obtener incidentes por zona: ' + error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -566,13 +500,8 @@ export class IncidenteService {
         order: { createdAt: 'DESC' },
       });
     } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      throw new HttpException(
-        'Error al obtener incidentes por estado: ' + error.message,
-        HttpStatus.INTERNAL_SERVER_ERROR
-      );
+      if (error instanceof HttpException) throw error;
+      throw new HttpException('Error al obtener incidentes por estado: ' + error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -588,15 +517,12 @@ export class IncidenteService {
         .getRawMany();
       return { total, porEstado };
     } catch (error) {
-      throw new HttpException(
-        'Error al obtener estadísticas: ' + error.message,
-        HttpStatus.INTERNAL_SERVER_ERROR
-      );
+      throw new HttpException('Error al obtener estadísticas: ' + error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
   async updateEstado(no_incidente: string, updateIncidenteEstadoDto: UpdateIncidenteEstadoDto): Promise<Incidente> {
-    try {  
+    try {
       const incidente = await this.incidenteRepository.findOne({
         where: { no_incidente },
         relations: ['zona', 'estado_acc_inc'],
@@ -607,11 +533,11 @@ export class IncidenteService {
       if (!estadoFavorable) throw new NotFoundException('Estado "Favorable" no encontrado');
 
       if (incidente.estado_acc_inc.id_estado_acc_inc !== 6) {
-        throw new HttpException('Solo los incidentes con estado "Pendiente" pueden ser actualizados', HttpStatus.BAD_REQUEST );
+        throw new HttpException('Solo los incidentes con estado "Pendiente" pueden ser actualizados', HttpStatus.BAD_REQUEST);
       }
 
       if (updateIncidenteEstadoDto.fech_solucion !== undefined) {
-        incidente.fech_solucion = updateIncidenteEstadoDto.fech_solucion;
+        incidente.fech_solucion = this.normalizeDateNoTZ(updateIncidenteEstadoDto.fech_solucion);
       }
       if (updateIncidenteEstadoDto.obs_incidente !== undefined) {
         incidente.obs_incidente = updateIncidenteEstadoDto.obs_incidente;
@@ -628,17 +554,15 @@ export class IncidenteService {
         where: { id_incidente: incidenteActualizado.id_incidente },
         relations: ['zona', 'estado_acc_inc'],
       });
-
       if (!incidenteCompleto) {
         throw new HttpException('Error al recuperar el incidente actualizado', HttpStatus.INTERNAL_SERVER_ERROR);
       }
       return incidenteCompleto;
-            
+
     } catch (error) {
-      if (error instanceof HttpException || error instanceof NotFoundException) {
-        throw error;
-      }
+      if (error instanceof HttpException || error instanceof NotFoundException) throw error;
       throw new HttpException('Error al actualizar el estado del incidente: ' + error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 }
+      

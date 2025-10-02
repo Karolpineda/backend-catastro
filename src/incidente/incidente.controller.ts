@@ -6,6 +6,7 @@ import { Incidente } from './entities/incidente.entity';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { UpdateIncidenteDto } from './dto/update-incidente.dto';
 
 @Controller('incidentes')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -88,13 +89,15 @@ export class IncidenteController {
           }
         }
 
-      @Patch(':id_incidente')
+              @Patch(':id_incidente')
+        @UsePipes(new ValidationPipe({ transform: true }))
         async update(
           @Param('id_incidente') id_incidente: number,
-          @Body() updateIncidenteDto: CreateIncidenteDto
+          @Body() updateIncidenteDto: UpdateIncidenteDto
         ): Promise<Incidente> {
           return this.incidenteService.updateIncidente(id_incidente, updateIncidenteDto);
         }
+
 
 
 
