@@ -12,6 +12,8 @@ import { Rol_Usuario } from '../users_rol/entities/users_rol.entity';
 import { CreateRequerimientoDto } from './dto/create-requerimiento.dto';
 import { UpdateRequerimientoDto } from './dto/update-requerimiento.dto';
 import { AddVersionDto } from 'src/versionamiento/dto/add-version.dto';
+import { CreateVersionamientoDto } from 'src/versionamiento/dto/create-versionamiento.dto';
+import { UpdateVersionamientoDto } from 'src/versionamiento/dto/update-versionamiento.dto';
 
 @Injectable()
 export class RequerimientoService {
@@ -30,6 +32,8 @@ export class RequerimientoService {
     private readonly sistemaRepository: Repository<Sistema>,
     @InjectRepository(Rol_Usuario)
     private readonly rolUsuarioRepository: Repository<Rol_Usuario>,
+    @InjectRepository(RequerimientoVersion)
+    private readonly requerimientoVersionRepository: Repository<RequerimientoVersion>,
     private dataSource: DataSource,
   ) {}
 
@@ -315,166 +319,357 @@ export class RequerimientoService {
       }
     }
 
-      // requerimiento.service.ts
-     async updateRequerimiento(
-        id_requerimiento: number,
-        updateData: UpdateRequerimientoDto
-      ): Promise<Requerimiento> {
-        const queryRunner = this.dataSource.createQueryRunner();
-        await queryRunner.connect();
-        await queryRunner.startTransaction();
+   
+    //  async updateRequerimiento(
+    //     id_requerimiento: number,
+    //     updateData: UpdateRequerimientoDto
+    //   ): Promise<Requerimiento> {
+    //     const queryRunner = this.dataSource.createQueryRunner();
+    //     await queryRunner.connect();
+    //     await queryRunner.startTransaction();
 
-        try {
-          // 1. Verificar que el requerimiento existe
-          const requerimiento = await this.requerimientoRepository.findOne({
-            where: { id_requerimiento },
-            relations: ['estadoRequerimiento', 'categoria', 'sistema', 'rolUsuario']
-          });
+    //     try {
+    //       // 1. Verificar que el requerimiento existe
+    //       const requerimiento = await this.requerimientoRepository.findOne({
+    //         where: { id_requerimiento },
+    //         relations: ['estadoRequerimiento', 'categoria', 'sistema', 'rolUsuario']
+    //       });
 
-          if (!requerimiento) {
-            throw new HttpException(
-              `Requerimiento con ID ${id_requerimiento} no encontrado`,
-              HttpStatus.NOT_FOUND
-            );
-          }
+    //       if (!requerimiento) {
+    //         throw new HttpException(
+    //           `Requerimiento con ID ${id_requerimiento} no encontrado`,
+    //           HttpStatus.NOT_FOUND
+    //         );
+    //       }
 
-          // 2. Definir configuración de relaciones con tipado fuerte
-          interface RelacionConfig {
-            repository: any;
-            field: keyof Requerimiento;
-            nombre: string;
-            relations?: string[];
-            whereField?: string;
-          }
+    //       // 2. Definir configuración de relaciones con tipado fuerte
+    //       interface RelacionConfig {
+    //         repository: any;
+    //         field: keyof Requerimiento;
+    //         nombre: string;
+    //         relations?: string[];
+    //         whereField?: string;
+    //       }
 
-          const relacionesConfig: { [key: string]: RelacionConfig } = {
-            id_estado_requerimiento: {
-              repository: this.estadoReqRepository,
-              field: 'estadoRequerimiento',
-              nombre: 'Estado requerimiento',
-              whereField: 'id_estado_requerimiento'
-            },
-            id_categoria: {
-              repository: this.categoriaRepository,
-              field: 'categoria',
-              nombre: 'Categoría',
-              whereField: 'id_categoria'
-            },
-            id_sistema: {
-              repository: this.sistemaRepository,
-              field: 'sistema',
-              nombre: 'Sistema',
-              whereField: 'id_sistema'
-            },
-            id_rol_usuario: {
-              repository: this.rolUsuarioRepository,
-              field: 'rolUsuario',
-              nombre: 'Rol usuario',
-              whereField: 'id_rol_usuario',
-              relations: ['usuario']
-            }
-          };
+    //       const relacionesConfig: { [key: string]: RelacionConfig } = {
+    //         id_estado_requerimiento: {
+    //           repository: this.estadoReqRepository,
+    //           field: 'estadoRequerimiento',
+    //           nombre: 'Estado requerimiento',
+    //           whereField: 'id_estado_requerimiento'
+    //         },
+    //         id_categoria: {
+    //           repository: this.categoriaRepository,
+    //           field: 'categoria',
+    //           nombre: 'Categoría',
+    //           whereField: 'id_categoria'
+    //         },
+    //         id_sistema: {
+    //           repository: this.sistemaRepository,
+    //           field: 'sistema',
+    //           nombre: 'Sistema',
+    //           whereField: 'id_sistema'
+    //         },
+    //         id_rol_usuario: {
+    //           repository: this.rolUsuarioRepository,
+    //           field: 'rolUsuario',
+    //           nombre: 'Rol usuario',
+    //           whereField: 'id_rol_usuario',
+    //           relations: ['usuario']
+    //         }
+    //       };
 
-          // 3. Validar y actualizar relaciones dinámicamente
-          for (const [campo, config] of Object.entries(relacionesConfig)) {
-            const valorCampo = updateData[campo as keyof UpdateRequerimientoDto];
+    //       // 3. Validar y actualizar relaciones dinámicamente
+    //       for (const [campo, config] of Object.entries(relacionesConfig)) {
+    //         const valorCampo = updateData[campo as keyof UpdateRequerimientoDto];
             
-            if (valorCampo !== undefined && valorCampo !== null) {
-              const whereCondition: any = {};
-              whereCondition[config.whereField || campo] = valorCampo;
+    //         if (valorCampo !== undefined && valorCampo !== null) {
+    //           const whereCondition: any = {};
+    //           whereCondition[config.whereField || campo] = valorCampo;
 
-              const entidadRelacionada = await config.repository.findOne({
-                where: whereCondition,
-                relations: config.relations || []
-              });
+    //           const entidadRelacionada = await config.repository.findOne({
+    //             where: whereCondition,
+    //             relations: config.relations || []
+    //           });
               
-              if (!entidadRelacionada) {
-                throw new HttpException(
-                  `${config.nombre} con ID ${valorCampo} no encontrado`,
-                  HttpStatus.NOT_FOUND
-                );
-              }
+    //           if (!entidadRelacionada) {
+    //             throw new HttpException(
+    //               `${config.nombre} con ID ${valorCampo} no encontrado`,
+    //               HttpStatus.NOT_FOUND
+    //             );
+    //           }
               
-              // Asignar la entidad relacionada al campo correspondiente
-              (requerimiento as any)[config.field] = entidadRelacionada;
-            }
-          }
+    //           // Asignar la entidad relacionada al campo correspondiente
+    //           (requerimiento as any)[config.field] = entidadRelacionada;
+    //         }
+    //       }
 
-          // 4. Actualizar campos simples
-          const camposSimples: (keyof UpdateRequerimientoDto)[] = [
-            'no_requerimiento', 'documento', 'tema', 'descripcion', 'fase'
-          ];
+    //       // 4. Actualizar campos simples
+    //       const camposSimples: (keyof UpdateRequerimientoDto)[] = [
+    //         'no_requerimiento', 'documento', 'tema', 'descripcion', 'fase'
+    //       ];
 
-          camposSimples.forEach(campo => {
-            if (updateData[campo] !== undefined && updateData[campo] !== null) {
-              (requerimiento as any)[campo] = updateData[campo];
-            }
-          });
+    //       camposSimples.forEach(campo => {
+    //         if (updateData[campo] !== undefined && updateData[campo] !== null) {
+    //           (requerimiento as any)[campo] = updateData[campo];
+    //         }
+    //       });
 
-          // 5. Guardar cambios
-          requerimiento.updatedAt = new Date();
-          await queryRunner.manager.save(requerimiento);
-          await queryRunner.commitTransaction();
+    //       // 5. Guardar cambios
+    //       requerimiento.updatedAt = new Date();
+    //       await queryRunner.manager.save(requerimiento);
+    //       await queryRunner.commitTransaction();
 
-          // 6. Retornar requerimiento actualizado
-          const requerimientoActualizado = await this.obtenerRequerimientoCompleto(id_requerimiento);
+    //       // 6. Retornar requerimiento actualizado
+    //       const requerimientoActualizado = await this.obtenerRequerimientoCompleto(id_requerimiento);
           
-          if (!requerimientoActualizado) {
-            throw new HttpException(
-              'Error al recuperar el requerimiento actualizado',
-              HttpStatus.INTERNAL_SERVER_ERROR
-            );
-          }
+    //       if (!requerimientoActualizado) {
+    //         throw new HttpException(
+    //           'Error al recuperar el requerimiento actualizado',
+    //           HttpStatus.INTERNAL_SERVER_ERROR
+    //         );
+    //       }
 
-          return requerimientoActualizado;
+    //       return requerimientoActualizado;
 
-        } catch (error) {
-          await queryRunner.rollbackTransaction();
+    //     } catch (error) {
+    //       await queryRunner.rollbackTransaction();
           
-          // Manejar errores específicos de base de datos
-          if (error instanceof HttpException) {
-            throw error;
-          }
+    //       // Manejar errores específicos de base de datos
+    //       if (error instanceof HttpException) {
+    //         throw error;
+    //       }
 
-          if ((error as any).code === '23503') {
-            throw new HttpException(
-              'Error de integridad referencial. Verifique los IDs de las entidades relacionadas.',
-              HttpStatus.BAD_REQUEST
-            );
-          }
+    //       if ((error as any).code === '23503') {
+    //         throw new HttpException(
+    //           'Error de integridad referencial. Verifique los IDs de las entidades relacionadas.',
+    //           HttpStatus.BAD_REQUEST
+    //         );
+    //       }
 
-          if ((error as any).code === '23505') {
-            throw new HttpException(
-              'El número de requerimiento ya existe',
-              HttpStatus.CONFLICT
-            );
-          }
+    //       if ((error as any).code === '23505') {
+    //         throw new HttpException(
+    //           'El número de requerimiento ya existe',
+    //           HttpStatus.CONFLICT
+    //         );
+    //       }
 
-          throw new HttpException(
-            `Error al actualizar el requerimiento: ${(error as Error).message}`,
-            HttpStatus.INTERNAL_SERVER_ERROR
-          );
-        } finally {
-          await queryRunner.release();
-        }
-      }
+    //       throw new HttpException(
+    //         `Error al actualizar el requerimiento: ${(error as Error).message}`,
+    //         HttpStatus.INTERNAL_SERVER_ERROR
+    //       );
+    //     } finally {
+    //       await queryRunner.release();
+    //     }
+    //   }
 
-      private async obtenerRequerimientoCompleto(id_requerimiento: number): Promise<Requerimiento | null> {
-        return await this.requerimientoRepository.findOne({
-          where: { id_requerimiento },
-          relations: [
-            'estadoRequerimiento',
-            'categoria',
-            'sistema',
-            'rolUsuario',
-            'rolUsuario.usuario',
-            'requerimientoVersiones',
-            'requerimientoVersiones.versionamiento',
-            'sirecqExterno'
-          ],
-        });
-      }
+async updateRequerimiento(
+  id_requerimiento: number,
+  updateData: UpdateRequerimientoDto
+): Promise<Requerimiento> {
+  const queryRunner = this.dataSource.createQueryRunner();
+  await queryRunner.connect();
+  await queryRunner.startTransaction();
+
+  try {
+    console.log('🔄 Iniciando actualización de requerimiento:', id_requerimiento);
+    console.log('Datos recibidos:', JSON.stringify(updateData, null, 2));
+
+    // 1. Buscar requerimiento con sus relaciones
+    const requerimiento = await this.requerimientoRepository.findOne({
+      where: { id_requerimiento },
+      relations: [
+        'estadoRequerimiento', 
+        'categoria', 
+        'sistema', 
+        'rolUsuario',
+        'requerimientoVersiones',
+        'requerimientoVersiones.versionamiento'
+      ]
+    });
+
+    if (!requerimiento) {
+      throw new HttpException('Requerimiento no encontrado', HttpStatus.NOT_FOUND);
+    }
+
+    // 2. Actualizar campos básicos del requerimiento
+    if (updateData.tema !== undefined) requerimiento.tema = updateData.tema;
+    if (updateData.descripcion !== undefined) requerimiento.descripcion = updateData.descripcion;
+    if (updateData.fase !== undefined) requerimiento.fase = updateData.fase;
+    if (updateData.documento !== undefined) requerimiento.documento = updateData.documento;
+    if (updateData.no_requerimiento !== undefined) requerimiento.no_requerimiento = updateData.no_requerimiento;
+
+    // 3. Actualizar relaciones
+    if (updateData.id_estado_requerimiento !== undefined) {
+      const estado = await this.estadoReqRepository.findOne({
+        where: { id_estado_requerimiento: updateData.id_estado_requerimiento }
+      });
+      if (estado) requerimiento.estadoRequerimiento = estado;
+    }
+
+    if (updateData.id_categoria !== undefined) {
+      const categoria = await this.categoriaRepository.findOne({
+        where: { id_categoria: updateData.id_categoria }
+      });
+      if (categoria) requerimiento.categoria = categoria;
+    }
+
+    if (updateData.id_sistema !== undefined) {
+      const sistema = await this.sistemaRepository.findOne({
+        where: { id_sistema: updateData.id_sistema }
+      });
+      if (sistema) requerimiento.sistema = sistema;
+    }
+
+    if (updateData.id_rol_usuario !== undefined) {
+      const rolUsuario = await this.rolUsuarioRepository.findOne({
+        where: { id_rol_usuario: updateData.id_rol_usuario },
+        relations: ['usuario', 'rol']
+      });
+      if (rolUsuario) requerimiento.rolUsuario = rolUsuario;
+    }
+
+    // 4. 🆕 ACTUALIZAR VERSIONAMIENTO (MUY SIMPLE)
+    if (updateData.versionamiento) {
+      console.log('📦 Procesando versionamiento:', updateData.versionamiento);
+      await this.actualizarVersionamientoDirecto(requerimiento, updateData.versionamiento, queryRunner);
+    }
+
+    // 5. Guardar cambios
+    requerimiento.updatedAt = new Date();
+    await queryRunner.manager.save(requerimiento);
+    await queryRunner.commitTransaction();
+
+    console.log('✅ Requerimiento actualizado exitosamente');
+
+    // 6. Retornar requerimiento actualizado
+    const requerimientoActualizado = await this.obtenerRequerimientoCompleto(id_requerimiento);
+if (!requerimientoActualizado) {
+  throw new HttpException(`Requerimiento con ID ${id_requerimiento} no encontrado`, HttpStatus.NOT_FOUND);
+}
+return requerimientoActualizado;
+
+  } catch (error) {
+    await queryRunner.rollbackTransaction();
+    console.error('❌ Error en updateRequerimiento:', error);
+    
+    if (error instanceof HttpException) {
+      throw error;
+    }
+    
+    throw new HttpException(
+      `Error al actualizar requerimiento: ${error.message}`,
+      HttpStatus.INTERNAL_SERVER_ERROR
+    );
+  } finally {
+    await queryRunner.release();
+  }
+}
+
+// 🆕 MÉTODO DIRECTO para versionamiento
+private async actualizarVersionamientoDirecto(
+  requerimiento: Requerimiento,
+  versionData: any,
+  queryRunner: any
+): Promise<void> {
+  try {
+    console.log('🎯 actualizarVersionamientoDirecto - INICIADO');
+    
+    // Buscar la relación de versión existente
+    const relacionExistente = await this.requerimientoVersionRepository.findOne({
+      where: { requerimiento: { id_requerimiento: requerimiento.id_requerimiento } },
+      relations: ['versionamiento']
+    });
+
+    if (relacionExistente && relacionExistente.versionamiento) {
+      console.log('🔄 Actualizando versión existente ID:', relacionExistente.versionamiento.id_version);
       
+      // ACTUALIZAR usando update directo
+      const updateResult = await queryRunner.manager.update(
+        Versionamiento,
+        relacionExistente.versionamiento.id_version,
+        {
+          oficioenviodmi: versionData.oficioenviodmi || null,
+          fechaenvioreq: versionData.fechaenvioreq || null,
+          ofi_desp_pt: versionData.ofi_desp_pt || null,
+          fech_desp_pt: versionData.fech_desp_pt || null,
+          num_version: versionData.num_version || 1,
+          obs_version: versionData.obs_version || null,
+          updatedAt: new Date()
+        }
+      );
+      
+      console.log('✅ Versión actualizada. Resultado:', updateResult.affected, 'registros afectados');
+      
+    } else {
+      console.log('🆕 Creando NUEVA versión...');
+      
+      // CREAR nueva versión
+      const nuevaVersion = await queryRunner.manager.save(Versionamiento, {
+        oficioenviodmi: versionData.oficioenviodmi || null,
+        fechaenvioreq: versionData.fechaenvioreq ? new Date(versionData.fechaenvioreq) : null,
+        ofi_desp_pt: versionData.ofi_desp_pt || null,
+        fech_desp_pt: versionData.fech_desp_pt ? new Date(versionData.fech_desp_pt) : null,
+        num_version: versionData.num_version || 1,
+        obs_version: versionData.obs_version || null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+
+      console.log('✅ Nueva versión creada ID:', nuevaVersion.id_version);
+
+      // Crear relación requerimiento-version
+      await queryRunner.manager.save(RequerimientoVersion, {
+        requerimiento: { id_requerimiento: requerimiento.id_requerimiento },
+        versionamiento: { id_version: nuevaVersion.id_version },
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+      
+      console.log('✅ Relación Requerimiento-Versión creada');
+    }
+    
+    console.log('🎉 actualizarVersionamientoDirecto - COMPLETADO');
+    
+  } catch (error) {
+    console.error('💥 ERROR en actualizarVersionamientoDirecto:', error);
+    throw new Error(`No se pudo procesar el versionamiento: ${error.message}`);
+  }
+}
+
+
+
+// 🆕 MÉTODO AUXILIAR para obtener versión actual
+private async getVersionActual(idRequerimiento: number): Promise<RequerimientoVersion | null> {
+  return await this.requerimientoVersionRepository.findOne({
+    where: {
+      requerimiento: { id_requerimiento: idRequerimiento }
+    },
+    relations: ['versionamiento'],
+    order: {
+      createdAt: 'DESC'
+    }
+  });
+}
+
+// 🆕 MÉTODO para obtener requerimiento completo
+private async obtenerRequerimientoCompleto(idRequerimiento: number): Promise<Requerimiento | null> {
+  return await this.requerimientoRepository.findOne({
+    where: { id_requerimiento: idRequerimiento },
+    relations: [
+      'estadoRequerimiento',
+      'categoria', 
+      'sistema', 
+      'rolUsuario',
+      'rolUsuario.usuario',
+      'rolUsuario.rol',
+      'requerimientoVersiones',
+      'requerimientoVersiones.versionamiento',
+      'sirecqExterno'
+    ]
+  });
+}
+
       async addVersionToRequerimiento(
         id_requerimiento: number,
         addVersionDto: AddVersionDto
@@ -559,41 +754,41 @@ export class RequerimientoService {
       }
 
       // requerimiento.service.ts
-async getVersionesByRequerimiento(id_requerimiento: number): Promise<Versionamiento[]> {
-  try {
-    const requerimiento = await this.requerimientoRepository.findOne({
-      where: { id_requerimiento },
-      relations: [
-        'requerimientoVersiones',
-        'requerimientoVersiones.versionamiento'
-      ],
-      order: {
-        requerimientoVersiones: {
-          versionamiento: {
-            num_version: 'ASC'
+      async getVersionesByRequerimiento(id_requerimiento: number): Promise<Versionamiento[]> {
+        try {
+          const requerimiento = await this.requerimientoRepository.findOne({
+            where: { id_requerimiento },
+            relations: [
+              'requerimientoVersiones',
+              'requerimientoVersiones.versionamiento'
+            ],
+            order: {
+              requerimientoVersiones: {
+                versionamiento: {
+                  num_version: 'ASC'
+                }
+              }
+            }
+          });
+
+          if (!requerimiento) {
+            throw new HttpException('Requerimiento no encontrado', HttpStatus.NOT_FOUND);
           }
+
+          // Extraer solo las versiones
+          const versiones = requerimiento.requerimientoVersiones
+            .map(rv => rv.versionamiento)
+            .filter(version => version !== null);
+
+          return versiones;
+
+        } catch (error) {
+          if (error instanceof HttpException) throw error;
+          throw new HttpException(
+            `Error al obtener versiones: ${error.message}`,
+            HttpStatus.INTERNAL_SERVER_ERROR
+          );
         }
       }
-    });
-
-    if (!requerimiento) {
-      throw new HttpException('Requerimiento no encontrado', HttpStatus.NOT_FOUND);
-    }
-
-    // Extraer solo las versiones
-    const versiones = requerimiento.requerimientoVersiones
-      .map(rv => rv.versionamiento)
-      .filter(version => version !== null);
-
-    return versiones;
-
-  } catch (error) {
-    if (error instanceof HttpException) throw error;
-    throw new HttpException(
-      `Error al obtener versiones: ${error.message}`,
-      HttpStatus.INTERNAL_SERVER_ERROR
-    );
-  }
-}
 
     }

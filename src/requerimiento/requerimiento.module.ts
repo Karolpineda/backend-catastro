@@ -17,5 +17,6 @@ import { Rol_Usuario } from '../users_rol/entities/users_rol.entity';
   ],
   controllers: [RequerimientoController],
   providers: [RequerimientoService],
+  exports: [RequerimientoService] 
 })
 export class RequerimientoModule {}
