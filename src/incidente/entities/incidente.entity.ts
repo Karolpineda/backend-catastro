@@ -52,6 +52,14 @@ export class Incidente {
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
   updatedAt: Date;
 
-  @OneToMany(() => UsuarioIncidente, usuarioIncidente => usuarioIncidente.incidente)
+   @OneToMany(
+    () => UsuarioIncidente, 
+    usuarioIncidente => usuarioIncidente.incidente,
+    { 
+      cascade: true, // Esto permite eliminar en cascada
+      onDelete: 'CASCADE' // Esto configura el DELETE CASCADE a nivel de BD
+    }
+  )
   usuariosIncidente: UsuarioIncidente[];
+
 }

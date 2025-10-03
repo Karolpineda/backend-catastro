@@ -552,15 +552,35 @@ export class IncidenteService {
   /** =========================
    *  Remove / Filtros / Estado
    *  ========================= */
-  async remove(id_incidente: number): Promise<void> {
-    try {
-      const incidente = await this.findNoIncidente(id_incidente);
-      await this.incidenteRepository.remove(incidente);
-    } catch (error) {
-      if (error instanceof NotFoundException) throw error;
-      throw new HttpException('Error al eliminar el incidente: ' + error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+ async remove(id_incidente: number): Promise<{ message: string }> {
+  const queryRunner = this.incidenteRepository.manager.connection.createQueryRunner();
+  await queryRunner.connect();
+  await queryRunner.startTransaction();
+
+  try {
+    // Verificar que existe
+    const incidente = await this.incidenteRepository.findOne({
+      where: { id_incidente }
+    });
+
+    if (!incidente) {
+      throw new HttpException(`No se encontró el incidente con ID: ${id_incidente}`, HttpStatus.NOT_FOUND);
     }
+
+    // Eliminar usando delete (se respetará el CASCADE de la BD)
+    await queryRunner.manager.delete(Incidente, { id_incidente });
+    
+    await queryRunner.commitTransaction();
+    return { message: 'Incidente eliminado correctamente' };
+    
+  } catch (error) {
+    await queryRunner.rollbackTransaction();
+    if (error instanceof HttpException) throw error;
+    throw new HttpException(`Error interno del servidor al eliminar el incidente: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+  } finally {
+    await queryRunner.release();
   }
+}
 
   async findByZona(nombre_zona: string): Promise<Incidente[]> {
     try {
