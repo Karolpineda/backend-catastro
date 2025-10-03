@@ -549,38 +549,44 @@ export class IncidenteService {
     }
   }
 
-  /** =========================
-   *  Remove / Filtros / Estado
-   *  ========================= */
- async remove(id_incidente: number): Promise<{ message: string }> {
-  const queryRunner = this.incidenteRepository.manager.connection.createQueryRunner();
-  await queryRunner.connect();
-  await queryRunner.startTransaction();
+    async remove(id_incidente: number): Promise<{ success: boolean; message: string }> {
+      const queryRunner = this.incidenteRepository.manager.connection.createQueryRunner();
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
 
-  try {
-    // Verificar que existe
-    const incidente = await this.incidenteRepository.findOne({
-      where: { id_incidente }
-    });
+      try {
+        // Verificar que existe
+        const incidente = await this.incidenteRepository.findOne({
+          where: { id_incidente }
+        });
 
-    if (!incidente) {
-      throw new HttpException(`No se encontró el incidente con ID: ${id_incidente}`, HttpStatus.NOT_FOUND);
+        if (!incidente) {
+          throw new HttpException(`No se encontró el incidente con ID: ${id_incidente}`, HttpStatus.NOT_FOUND);
+        }
+
+        // Eliminar relaciones
+        await queryRunner.manager.delete(UsuarioIncidente, {
+          incidente: { id_incidente }
+        });
+
+        // Eliminar incidente
+        await queryRunner.manager.delete(Incidente, { id_incidente });
+        
+        await queryRunner.commitTransaction();
+        
+        return { 
+          success: true, 
+          message: 'Incidente eliminado correctamente' 
+        };
+        
+      } catch (error) {
+        await queryRunner.rollbackTransaction();
+        if (error instanceof HttpException) throw error;
+        throw new HttpException(`Error al eliminar el incidente: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+      } finally {
+        await queryRunner.release();
+      }
     }
-
-    // Eliminar usando delete (se respetará el CASCADE de la BD)
-    await queryRunner.manager.delete(Incidente, { id_incidente });
-    
-    await queryRunner.commitTransaction();
-    return { message: 'Incidente eliminado correctamente' };
-    
-  } catch (error) {
-    await queryRunner.rollbackTransaction();
-    if (error instanceof HttpException) throw error;
-    throw new HttpException(`Error interno del servidor al eliminar el incidente: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
-  } finally {
-    await queryRunner.release();
-  }
-}
 
   async findByZona(nombre_zona: string): Promise<Incidente[]> {
     try {

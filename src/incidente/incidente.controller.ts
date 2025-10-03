@@ -102,9 +102,9 @@ export class IncidenteController {
 
 
       @Delete(':id_incidente')
-      async remove(@Param('id_incidente') id_incidente: number): Promise<void> {
+      async remove(@Param('id_incidente') id_incidente: number): Promise<{ message: string }> {
         try {
-          await this.incidenteService.remove(id_incidente);
+          return await this.incidenteService.remove(id_incidente);
         } catch (error) {
           if (error instanceof HttpException) {
             throw error;
