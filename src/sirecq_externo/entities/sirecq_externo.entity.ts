@@ -53,5 +53,5 @@ export class SirecqExterno {
     onDelete: 'SET NULL'
   })
   @JoinColumn({ name: 'id_dependencia' })
-  dependencia: Dependencia;
+  dependencia: Dependencia | null;;
 }

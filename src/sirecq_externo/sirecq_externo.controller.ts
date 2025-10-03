@@ -1,54 +1,105 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, HttpException, HttpStatus, HttpCode } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, HttpException, HttpStatus, HttpCode, ParseIntPipe } from '@nestjs/common';
 import { SirecqExternoService } from './sirecq_externo.service';
 import { CreateSirecqExternoDto } from './dto/create-sirecq_externo.dto';
 import { UpdateSirecqExternoDto } from './dto/update-sirecq_externo.dto';
+import { UpdateSirecqExternoCompletoDto } from './dto/update-sireq_externo-completo.dto';
 
 @Controller('sirecq-externo')
 export class SirecqExternoController {
   constructor(private readonly sirecqExternoService: SirecqExternoService) {}
 
   // sirecq-externo.controller.ts
-@Post()
-@HttpCode(HttpStatus.CREATED)
-async createCompleto(
-  @Body() createSirecqExternoCompletoDto: CreateSirecqExternoDto
-) {
-  try {
-    const sirecqExterno = await this.sirecqExternoService.createSirecqExternoCompleto(
-      createSirecqExternoCompletoDto
-    );
-    
-    return {
-      success: true,
-      message: 'SirecqExterno y Requerimiento creados exitosamente',
-      data: sirecqExterno
-    };
-  } catch (error) {
-    throw new HttpException(
-      {
-        success: false,
-        message: error.message,
-        data: null
-      },
-      error.status || HttpStatus.INTERNAL_SERVER_ERROR
-    );
-  }
-}
+    @Post()
+    @HttpCode(HttpStatus.CREATED)
+    async createCompleto(
+      @Body() createSirecqExternoCompletoDto: CreateSirecqExternoDto
+    ) {
+      try {
+        const sirecqExterno = await this.sirecqExternoService.createSirecqExternoCompleto(
+          createSirecqExternoCompletoDto
+        );
+        
+        return {
+          success: true,
+          message: 'SirecqExterno y Requerimiento creados exitosamente',
+          data: sirecqExterno
+        };
+      } catch (error) {
+        throw new HttpException(
+          {
+            success: false,
+            message: error.message,
+            data: null
+          },
+          error.status || HttpStatus.INTERNAL_SERVER_ERROR
+        );
+      }
+    }
 
-  @Get()
-  findAll() {
-    return this.sirecqExternoService.findAll();
-  }
+    @Get()
+    @HttpCode(HttpStatus.OK)
+    async findAll() {
+      try {
+        const sirecqExternos = await this.sirecqExternoService.findAll();
+        
+        return {
+          success: true,
+          message: 'SirecqExternos obtenidos exitosamente',
+          data: sirecqExternos,
+          count: sirecqExternos.length
+        };
+      } catch (error) {
+        return {
+          success: false,
+          message: error.message,
+          data: null,
+          count: 0
+        };
+      }
+    }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.sirecqExternoService.findOne(+id);
-  }
+    @Get(':id_sirecq_externo')
+    @HttpCode(HttpStatus.OK)
+    async findOne(@Param('id_sirecq_externo', ParseIntPipe) id_sirecq_externo: number) {
+      try {
+        const sirecqExterno = await this.sirecqExternoService.findOne(id_sirecq_externo);
+        
+        return {
+          success: true,
+          message: 'SirecqExterno obtenido exitosamente',
+          data: sirecqExterno
+        };
+      } catch (error) {
+        return {
+          success: false,
+          message: error.message,
+          data: null
+        };
+      }
+    }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateSirecqExternoDto: UpdateSirecqExternoDto) {
-    return this.sirecqExternoService.update(+id, updateSirecqExternoDto);
-  }
+    @Patch(':id_sirecq_externo')
+    @HttpCode(HttpStatus.OK)
+        async updateCompleto(
+          @Param('id_sirecq_externo', ParseIntPipe) id_sirecq_externo: number,
+          @Body() updateCompletoDto: UpdateSirecqExternoCompletoDto
+        ) {
+          try {
+            const sirecqExterno = await this.sirecqExternoService.updateCompleto(id_sirecq_externo, updateCompletoDto);
+            
+            return {
+              success: true,
+              message: 'SirecqExterno y Requerimiento actualizados exitosamente',
+              data: sirecqExterno
+            };
+          } catch (error) {
+            return {
+              success: false,
+              message: error.message,
+              data: null
+            };
+          }
+        }
 
   @Delete(':id')
   remove(@Param('id') id: string) {

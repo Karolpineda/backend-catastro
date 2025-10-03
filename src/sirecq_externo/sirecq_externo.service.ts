@@ -12,6 +12,8 @@ import { Sistema } from 'src/sistema/sistema.entity';
 import { Rol_Usuario } from '../users_rol/entities/users_rol.entity';
 import { Versionamiento } from 'src/versionamiento/entities/versionamiento.entity';
 import { RequerimientoVersion } from 'src/requerimiento-version/entities/requerimiento-version.entity';
+import { UpdateSirecqExternoCompletoDto } from './dto/update-sireq_externo-completo.dto';
+import { RequerimientoService } from 'src/requerimiento/requerimiento.service';
 
 @Injectable()
 export class SirecqExternoService {
@@ -36,6 +38,7 @@ export class SirecqExternoService {
     private readonly versionamientoRepository: Repository<Versionamiento>,
     @InjectRepository(RequerimientoVersion)
     private readonly reqVersionRepository: Repository<RequerimientoVersion>,
+    private readonly requerimientoService: RequerimientoService,
 
     private dataSource: DataSource
 
@@ -204,17 +207,195 @@ export class SirecqExternoService {
       }
     }
 
-  findAll() {
-    return `This action returns all sirecqExterno`;
-  }
+    async findAll(): Promise<SirecqExterno[]> {
+      try {
+        return await this.sirecqExternoRepository.find({
+          relations: [
+            'requerimiento',
+            'requerimiento.estadoRequerimiento',
+            'requerimiento.categoria',
+            'requerimiento.sistema',
+            'requerimiento.rolUsuario',
+            'requerimiento.rolUsuario.usuario',
+            'requerimiento.requerimientoVersiones',
+            'requerimiento.requerimientoVersiones.versionamiento',
+            'dependencia',
+            'sirecqInterno'
+          ],
+          order: {
+            createdAt: 'DESC'
+          }
+        });
 
-  findOne(id: number) {
-    return `This action returns a #${id} sirecqExterno`;
-  }
+      } catch (error) {
+        throw new HttpException(
+          `Error al obtener SirecqExternos: ${error.message}`,
+          HttpStatus.INTERNAL_SERVER_ERROR
+        );
+      }
+    }
 
-  update(id: number, updateSirecqExternoDto: UpdateSirecqExternoDto) {
-    return `This action updates a #${id} sirecqExterno`;
+    async findOne(id_sirecq_externo: number): Promise<SirecqExterno> {
+      try {
+        const sirecqExterno = await this.sirecqExternoRepository.findOne({
+          where: { id_sirecq_externo },
+          relations: [
+            'requerimiento',
+            'requerimiento.estadoRequerimiento',
+            'requerimiento.categoria',
+            'requerimiento.sistema',
+            'requerimiento.rolUsuario',
+            'requerimiento.rolUsuario.usuario',
+            'requerimiento.requerimientoVersiones',
+            'requerimiento.requerimientoVersiones.versionamiento',
+            'dependencia',
+            'sirecqInterno'
+          ],
+        });
+
+        if (!sirecqExterno) {
+          throw new HttpException(
+            `SirecqExterno con ID ${id_sirecq_externo} no encontrado`,
+            HttpStatus.NOT_FOUND
+          );
+        }
+
+        return sirecqExterno;
+
+      } catch (error) {
+        if (error instanceof HttpException) throw error;
+        throw new HttpException(
+          `Error al obtener SirecqExterno: ${error.message}`,
+          HttpStatus.INTERNAL_SERVER_ERROR
+        );
+      }
+    }
+
+      async findByRequerimiento(id_requerimiento: number): Promise<SirecqExterno | null> {
+        try {
+          return await this.sirecqExternoRepository.findOne({
+            where: { id_requerimiento },
+            relations: [
+              'requerimiento',
+              'dependencia',
+              'sirecqInterno'
+            ],
+          });
+        } catch (error) {
+          throw new HttpException(
+            `Error al buscar SirecqExterno por requerimiento: ${error.message}`,
+            HttpStatus.INTERNAL_SERVER_ERROR
+          );
+        }
+      }
+
+     async updateCompleto(
+  id_sirecq_externo: number,
+  updateCompletoDto: UpdateSirecqExternoCompletoDto & { versionamiento?: any } // 🆕 Agregar versionamiento aquí
+): Promise<SirecqExterno> {
+  try {
+    // 1. Obtener SirecqExterno con su requerimiento
+    const sirecqExterno = await this.sirecqExternoRepository.findOne({
+      where: { id_sirecq_externo },
+      relations: ['requerimiento', 'dependencia']
+    });
+
+    if (!sirecqExterno) {
+      throw new HttpException('SirecqExterno no encontrado', HttpStatus.NOT_FOUND);
+    }
+
+    if (!sirecqExterno.requerimiento) {
+      throw new HttpException('Requerimiento asociado no encontrado', HttpStatus.BAD_REQUEST);
+    }
+
+    // 2. Actualizar SirecqExterno si viene en el DTO
+    if (updateCompletoDto.sirecqExterno) {
+      await this.actualizarSirecqExterno(
+        sirecqExterno, 
+        updateCompletoDto.sirecqExterno
+      );
+    }
+
+    // 3. 🆕 PREPARAR DATOS PARA REQUERIMIENTO INCLUYENDO VERSIONAMIENTO
+    const datosRequerimiento: any = { ...updateCompletoDto.requerimiento };
+    
+    // Si hay versionamiento en el nivel principal, agregarlo al requerimiento
+    if (updateCompletoDto.versionamiento) {
+      datosRequerimiento.versionamiento = updateCompletoDto.versionamiento;
+    }
+
+    // 4. ✅ ACTUALIZAR REQUERIMIENTO USANDO EL SERVICIO EXISTENTE
+    if (updateCompletoDto.requerimiento || updateCompletoDto.versionamiento) {
+      await this.requerimientoService.updateRequerimiento(
+        sirecqExterno.requerimiento.id_requerimiento,
+        datosRequerimiento
+      );
+    }
+
+    // 5. Retornar SirecqExterno actualizado
+    const sirecqExternoActualizado = await this.sirecqExternoRepository.findOne({
+      where: { id_sirecq_externo },
+      relations: [
+        'requerimiento',
+        'requerimiento.estadoRequerimiento',
+        'requerimiento.categoria',
+        'requerimiento.sistema',
+        'requerimiento.rolUsuario',
+        'requerimiento.rolUsuario.usuario',
+        'requerimiento.requerimientoVersiones',
+        'requerimiento.requerimientoVersiones.versionamiento',
+        'dependencia',
+        'sirecqInterno'
+      ],
+    });
+
+    if (!sirecqExternoActualizado) {
+      throw new HttpException(`SirecqExterno con ID ${id_sirecq_externo} no encontrado`, HttpStatus.NOT_FOUND);
+    }
+
+    return sirecqExternoActualizado;
+  } catch (error) {
+    throw new HttpException(
+      `Error al actualizar completo: ${error.message}`,
+      HttpStatus.INTERNAL_SERVER_ERROR
+    );
   }
+}
+
+      private async actualizarSirecqExterno(
+        sirecqExterno: SirecqExterno,
+        updateDto: UpdateSirecqExternoDto
+      ): Promise<void> {
+        
+        // Validar dependencia si se proporciona
+        if (updateDto.id_dependencia !== undefined) {
+          let dependencia: Dependencia | null = null;
+          
+          if (updateDto.id_dependencia !== null) {
+            dependencia = await this.dependenciaRepository.findOne({
+              where: { id_dependencia: updateDto.id_dependencia }
+            });
+            
+            if (!dependencia) {
+              throw new HttpException('Dependencia no encontrada', HttpStatus.NOT_FOUND);
+            }
+          }
+          sirecqExterno.dependencia = dependencia;
+        }
+
+        // Actualizar campos de SirecqExterno
+        const camposSirecq = ['tramitepr', 'seguimientoinst', 'tramitecat', 'observacionesgen'];
+        
+        camposSirecq.forEach(campo => {
+          if (updateDto[campo] !== undefined) {
+            sirecqExterno[campo] = updateDto[campo];
+          }
+        });
+
+        sirecqExterno.updatedAt = new Date();
+        await this.sirecqExternoRepository.save(sirecqExterno);
+      }
+
 
   remove(id: number) {
     return `This action removes a #${id} sirecqExterno`;

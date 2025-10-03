@@ -11,10 +11,12 @@ import { Sistema } from 'src/sistema/sistema.entity';
 import { Rol_Usuario } from '../users_rol/entities/users_rol.entity';
 import { Versionamiento } from '../versionamiento/entities/versionamiento.entity';
 import { RequerimientoVersion } from '../requerimiento-version/entities/requerimiento-version.entity';
-@Module({
-  imports: [
-    TypeOrmModule.forFeature([
-      SirecqExterno,
+import { RequerimientoModule } from 'src/requerimiento/requerimiento.module';
+
+  @Module({
+    imports: [
+      TypeOrmModule.forFeature([
+        SirecqExterno,
       Requerimiento,
       Dependencia,
       Estado_requerimiento,
@@ -23,9 +25,12 @@ import { RequerimientoVersion } from '../requerimiento-version/entities/requerim
       Rol_Usuario,
       Versionamiento,
       RequerimientoVersion
-    ])
-  ],
-  controllers: [SirecqExternoController],
-  providers: [SirecqExternoService],
-})
-export class SirecqExternoModule {}
+      ]),
+      // ✅ IMPORTAR EL MÓDULO PARA USAR EL SERVICIO
+      RequerimientoModule
+    ],
+    controllers: [SirecqExternoController],
+    providers: [SirecqExternoService],
+    exports: [SirecqExternoService]
+  })
+  export class SirecqExternoModule {}
