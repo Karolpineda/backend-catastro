@@ -397,7 +397,101 @@ export class SirecqExternoService {
       }
 
 
-  remove(id: number) {
-    return `This action removes a #${id} sirecqExterno`;
+async deleteSirecqExterno(id_sirecq_externo: number): Promise<{ message: string; ids_eliminados: any }> {
+  const queryRunner = this.dataSource.createQueryRunner();
+  await queryRunner.connect();
+  await queryRunner.startTransaction();
+
+  try {
+    console.log('🗑️ Iniciando eliminación de SirecqExterno ID:', id_sirecq_externo);
+
+    // 1. Verificar que el SirecqExterno existe y obtener sus relaciones
+    const sirecqExterno = await this.sirecqExternoRepository.findOne({
+      where: { id_sirecq_externo },
+      relations: ['requerimiento', 'sirecqInterno']
+    });
+
+    if (!sirecqExterno) {
+      throw new HttpException(
+        `SirecqExterno con ID ${id_sirecq_externo} no encontrado`,
+        HttpStatus.NOT_FOUND
+      );
+    }
+
+    const idsEliminados = {
+      sirecq_externo: id_sirecq_externo,
+      requerimiento: null as number | null
+    };
+
+    // 2. Guardar el ID del requerimiento antes de eliminar
+    const idRequerimiento = sirecqExterno.requerimiento?.id_requerimiento;
+
+    // 4. Eliminar el SirecqExterno
+    console.log('🗑️ Eliminando SirecqExterno...');
+    const resultSirecq = await queryRunner.manager.delete(SirecqExterno, id_sirecq_externo);
+
+    if (resultSirecq.affected === 0) {
+      throw new HttpException(
+        'No se pudo eliminar el SirecqExterno',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+
+    await queryRunner.commitTransaction();
+    console.log('✅ SirecqExterno eliminado exitosamente');
+
+    // 5. 🎯 ELIMINAR EL REQUERIMIENTO USANDO EL SERVICIO EXISTENTE
+    if (idRequerimiento) {
+      console.log('🔄 Eliminando requerimiento relacionado ID:', idRequerimiento);
+      
+      try {
+        const resultadoRequerimiento = await this.requerimientoService.deleteRequerimiento(idRequerimiento);
+        console.log('✅ Requerimiento eliminado:', resultadoRequerimiento.message);
+        
+        idsEliminados.requerimiento = idRequerimiento;
+        
+        return {
+          message: `SirecqExterno y Requerimiento eliminados exitosamente`,
+          ids_eliminados: idsEliminados
+        };
+        
+      } catch (error) {
+        // Si falla la eliminación del requerimiento, al menos el SirecqExterno ya se eliminó
+        console.warn('⚠️ SirecqExterno eliminado pero el requerimiento no pudo eliminarse:', error.message);
+        
+        return {
+          message: `SirecqExterno eliminado. Requerimiento ${idRequerimiento} no pudo eliminarse: ${error.message}`,
+          ids_eliminados: idsEliminados
+        };
+      }
+    }
+
+    return {
+      message: 'SirecqExterno eliminado exitosamente (no tenía requerimiento relacionado)',
+      ids_eliminados: idsEliminados
+    };
+
+  } catch (error) {
+    await queryRunner.rollbackTransaction();
+    console.error('💥 Error eliminando SirecqExterno:', error);
+    
+    if (error instanceof HttpException) {
+      throw error;
+    }
+
+    if (error.code === '23503') {
+      throw new HttpException(
+        'No se puede eliminar el SirecqExterno porque tiene registros relacionados en otras tablas',
+        HttpStatus.CONFLICT
+      );
+    }
+
+    throw new HttpException(
+      `Error al eliminar el SirecqExterno: ${error.message}`,
+      HttpStatus.INTERNAL_SERVER_ERROR
+    );
+  } finally {
+    await queryRunner.release();
   }
+}
 }

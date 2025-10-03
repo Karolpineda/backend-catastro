@@ -101,8 +101,24 @@ export class SirecqExternoController {
           }
         }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.sirecqExternoService.remove(+id);
-  }
+      @Delete(':id_sirecq_externo')
+      async delete(
+        @Param('id_sirecq_externo', ParseIntPipe) id_sirecq_externo: number
+      ): Promise<{ 
+        success: boolean; 
+        message: string; 
+        data: { ids_eliminados: any } 
+      }> {
+        try {
+          const result = await this.sirecqExternoService.deleteSirecqExterno(id_sirecq_externo);
+          
+          return {
+            success: true,
+            message: result.message,
+            data: { ids_eliminados: result.ids_eliminados }
+          };
+        } catch (error) {
+          throw error;
+        }
+      }
 }
