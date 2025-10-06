@@ -24,11 +24,12 @@ export class SirecqExterno {
   @Column({ type: 'int', name: 'id_requerimiento', nullable: true, unique: true })
   id_requerimiento: number;
 
-  @CreateDateColumn()
-  createdAt: Date;
+  @CreateDateColumn({ name: 'createdAt' })
+createdAt: Date;
 
-  @UpdateDateColumn()
-  updatedAt: Date;
+@UpdateDateColumn({ name: 'updatedAt' })
+updatedAt: Date;
+
 
   // Relación One-to-One con Requerimiento (inversa)
   @OneToOne(() => Requerimiento, (requerimiento) => requerimiento.sirecqExterno, {

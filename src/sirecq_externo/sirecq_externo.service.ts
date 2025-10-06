@@ -208,32 +208,31 @@ export class SirecqExternoService {
     }
 
     async findAll(): Promise<SirecqExterno[]> {
-      try {
-        return await this.sirecqExternoRepository.find({
-          relations: [
-            'requerimiento',
-            'requerimiento.estadoRequerimiento',
-            'requerimiento.categoria',
-            'requerimiento.sistema',
-            'requerimiento.rolUsuario',
-            'requerimiento.rolUsuario.usuario',
-            'requerimiento.requerimientoVersiones',
-            'requerimiento.requerimientoVersiones.versionamiento',
-            'dependencia',
-            'sirecqInterno'
-          ],
-          order: {
-            createdAt: 'DESC'
-          }
-        });
+  try {
+    const sirecqExternos = await this.sirecqExternoRepository
+      .createQueryBuilder('sirecqExterno')
+      .leftJoinAndSelect('sirecqExterno.requerimiento', 'requerimiento')
+      .leftJoinAndSelect('requerimiento.estadoRequerimiento', 'estadoRequerimiento')
+      .leftJoinAndSelect('requerimiento.categoria', 'categoria')
+      .leftJoinAndSelect('requerimiento.sistema', 'sistema')
+      .leftJoinAndSelect('requerimiento.rolUsuario', 'rolUsuario')
+      .leftJoinAndSelect('rolUsuario.usuario', 'usuario')
+      .leftJoinAndSelect('requerimiento.requerimientoVersiones', 'requerimientoVersiones')
+      .leftJoinAndSelect('requerimientoVersiones.versionamiento', 'versionamiento')
+      .leftJoinAndSelect('sirecqExterno.dependencia', 'dependencia')
+      .leftJoinAndSelect('sirecqExterno.sirecqInterno', 'sirecqInterno')
+      .orderBy('sirecqExterno.createdAt', 'DESC') // ✅ usa alias explícito
+      .getMany();
 
-      } catch (error) {
-        throw new HttpException(
-          `Error al obtener SirecqExternos: ${error.message}`,
-          HttpStatus.INTERNAL_SERVER_ERROR
-        );
-      }
-    }
+    return sirecqExternos;
+  } catch (error) {
+    throw new HttpException(
+      `Error al obtener SirecqExternos: ${error.message}`,
+      HttpStatus.INTERNAL_SERVER_ERROR
+    );
+  }
+}
+
 
     async findOne(id_sirecq_externo: number): Promise<SirecqExterno> {
       try {
