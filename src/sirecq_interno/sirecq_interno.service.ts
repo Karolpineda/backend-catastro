@@ -1,26 +1,647 @@
-import { Injectable } from '@nestjs/common';
-import { CreateSirecqInternoDto } from './dto/create-sirecq_interno.dto';
-import { UpdateSirecqInternoDto } from './dto/update-sirecq_interno.dto';
+import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, DataSource } from 'typeorm';
+import { SirecqInterno } from './entities/sirecq_interno.entity';
+import { SirecqExterno } from '../sirecq_externo/entities/sirecq_externo.entity';
+import { Requerimiento } from '../requerimiento/entities/requerimiento.entity';
+import { Versionamiento } from '../versionamiento/entities/versionamiento.entity';
+import { RequerimientoVersion } from '../requerimiento-version/entities/requerimiento-version.entity';
+import { Clasif_catastral } from '../clasif_catastral/clasif_catastral.entity';
+import { Dependencia } from '../dependencia/dependecia.entity';
+import { Estado_requerimiento } from '../estado_requerimiento/entities/estado_requerimiento.entity';
+import { Categoria } from '../categoria/categoria.entity';
+import { Sistema } from '../sistema/sistema.entity';
+import { Rol_Usuario } from '../users_rol/entities/users_rol.entity';
+import { UsuarioSirecq } from '../usuario_sirecq/entities/usuario_sirecq.entity';
+import { CreateSirecqInternoDto } from 'src/sirecq_interno/dto/create-sirecq_interno.dto';
+import { UpdateSirecqInternoDto } from 'src/sirecq_interno/dto/update-sirecq_interno.dto';
+import { UsersRolService } from '../users_rol/users_rol.service';
+import { RequerimientoService } from '../requerimiento/requerimiento.service';
+import { UpdateSirecqExternoDto } from 'src/sirecq_externo/dto/update-sirecq_externo.dto';
 
 @Injectable()
 export class SirecqInternoService {
-  create(createSirecqInternoDto: CreateSirecqInternoDto) {
-    return 'This action adds a new sirecqInterno';
-  }
+  [x: string]: any;
+  constructor(
+    @InjectRepository(SirecqInterno)
+    private readonly sirecqInternoRepository: Repository<SirecqInterno>,
 
-  findAll() {
-    return `This action returns all sirecqInterno`;
-  }
+    @InjectRepository(SirecqExterno)
+    private readonly sirecqExternoRepository: Repository<SirecqExterno>,
 
-  findOne(id: number) {
-    return `This action returns a #${id} sirecqInterno`;
-  }
+    @InjectRepository(Requerimiento)
+    private readonly requerimientoRepository: Repository<Requerimiento>,
 
-  update(id: number, updateSirecqInternoDto: UpdateSirecqInternoDto) {
-    return `This action updates a #${id} sirecqInterno`;
-  }
+    @InjectRepository(Versionamiento)
+    private readonly versionamientoRepository: Repository<Versionamiento>,
 
-  remove(id: number) {
-    return `This action removes a #${id} sirecqInterno`;
-  }
+    @InjectRepository(RequerimientoVersion)
+    private readonly requerimientoVersionRepository: Repository<RequerimientoVersion>,
+
+    @InjectRepository(Clasif_catastral)
+    private readonly clasifCatastralRepository: Repository<Clasif_catastral>,
+
+    @InjectRepository(Dependencia)
+    private readonly dependenciaRepository: Repository<Dependencia>,
+
+    @InjectRepository(Estado_requerimiento)
+    private readonly estadoReqRepository: Repository<Estado_requerimiento>,
+
+    @InjectRepository(Categoria)
+    private readonly categoriaRepository: Repository<Categoria>,
+
+    @InjectRepository(Sistema)
+    private readonly sistemaRepository: Repository<Sistema>,
+
+    @InjectRepository(Rol_Usuario)
+    private readonly rolUsuarioRepository: Repository<Rol_Usuario>,
+
+    @InjectRepository(UsuarioSirecq)
+    private readonly usuarioSirecqRepository: Repository<UsuarioSirecq>,
+
+    private readonly usersRolService: UsersRolService,
+    private readonly requerimientoService: RequerimientoService,
+    private readonly dataSource: DataSource
+    ) {}
+
+
+    async createSirecqInterno(createSirecqInternoDto: CreateSirecqInternoDto): Promise<SirecqInterno> {
+      const queryRunner = this.dataSource.createQueryRunner();
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
+      try {
+        console.log('🔄 Creando SirecqInterno completo...');
+
+        // 1. VALIDACIONES BÁSICAS
+        const requerimientoFound = await this.requerimientoRepository.findOne({ 
+          where: { no_requerimiento: createSirecqInternoDto.requerimiento.no_requerimiento } 
+        });
+        if (requerimientoFound) {
+          throw new HttpException('Número de requerimiento ya existe', HttpStatus.CONFLICT);
+        }
+
+        // Validar clasificación catastral
+        if (createSirecqInternoDto.id_clasif_catastral) {
+          const clasifCatastralFound = await this.clasifCatastralRepository.findOne({ 
+            where: { id_clasif_catastral: createSirecqInternoDto.id_clasif_catastral } 
+          });
+          if (!clasifCatastralFound) {
+            throw new HttpException('Clasificación catastral no existe', HttpStatus.NOT_FOUND);
+          }
+        }
+
+        // Validar dependencia
+        if (createSirecqInternoDto.sirecqExterno.id_dependencia) {
+          const dependenciaFound = await this.dependenciaRepository.findOne({ 
+            where: { id_dependencia: createSirecqInternoDto.sirecqExterno.id_dependencia } 
+          });
+          if (!dependenciaFound) {
+            throw new HttpException('Dependencia no existe', HttpStatus.NOT_FOUND);
+          }
+        }
+
+        // 2. VALIDAR ESTADO, CATEGORÍA, SISTEMA Y ROL USUARIO
+        const estadoRequerimiento = await this.estadoReqRepository.findOne({
+          where: { id_estado_requerimiento: createSirecqInternoDto.requerimiento.id_estado_requerimiento }
+        });
+        if (!estadoRequerimiento) {
+          throw new HttpException('Estado de requerimiento no existe', HttpStatus.NOT_FOUND);
+        }
+
+        const categoria = await this.categoriaRepository.findOne({
+          where: { id_categoria: createSirecqInternoDto.requerimiento.id_categoria }
+        });
+        if (!categoria) {
+          throw new HttpException('Categoría no existe', HttpStatus.NOT_FOUND);
+        }
+
+        const sistema = await this.sistemaRepository.findOne({
+          where: { id_sistema: createSirecqInternoDto.requerimiento.id_sistema }
+        });
+        if (!sistema) {
+          throw new HttpException('Sistema no existe', HttpStatus.NOT_FOUND);
+        }
+
+        const rolUsuario = await this.rolUsuarioRepository.findOne({
+          where: { id_rol_usuario: createSirecqInternoDto.requerimiento.id_rol_usuario },
+          relations: ['usuario', 'rol']
+        });
+        if (!rolUsuario) {
+          throw new HttpException('Rol de usuario no existe', HttpStatus.NOT_FOUND);
+        }
+
+        // 3. VALIDAR USUARIOS SI SE PROPORCIONAN
+        const usuariosAAsignar:number[] = [];
+
+        if (createSirecqInternoDto.id_analista) {
+          const analistaValido = await this.usersRolService.findOne(createSirecqInternoDto.id_analista);
+          if (!analistaValido) throw new HttpException('Analista no válido', HttpStatus.BAD_REQUEST);
+          usuariosAAsignar.push(createSirecqInternoDto.id_analista);
+        }
+
+        if (createSirecqInternoDto.id_tecnico) {
+          const tecnicoValido = await this.usersRolService.findOne(createSirecqInternoDto.id_tecnico);
+          if (!tecnicoValido) throw new HttpException('Técnico no válido', HttpStatus.BAD_REQUEST);
+          usuariosAAsignar.push(createSirecqInternoDto.id_tecnico);
+        }
+
+
+        // Función auxiliar para fechas
+        const fixDateToNoTimezone = (date: string | Date | undefined): Date | undefined => {
+          if (!date) return undefined;
+          const d = new Date(date);
+          d.setHours(12, 0, 0, 0);
+          return d;
+        };
+
+        // 4. CREAR REQUERIMIENTO
+        const requerimientoData: Partial<Requerimiento> = {
+          no_requerimiento: createSirecqInternoDto.requerimiento.no_requerimiento.trim().toUpperCase(),
+          tema: createSirecqInternoDto.requerimiento.tema,
+          descripcion: createSirecqInternoDto.requerimiento.descripcion,
+          fase: createSirecqInternoDto.requerimiento.fase,
+          fecha_registro: fixDateToNoTimezone(createSirecqInternoDto.requerimiento.fecha_registro) || new Date(),
+          estadoRequerimiento: estadoRequerimiento,
+          categoria: categoria,
+          sistema: sistema,
+          rolUsuario: rolUsuario,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+
+        const requerimiento = this.requerimientoRepository.create(requerimientoData);
+        const requerimientoGuardado = await queryRunner.manager.save(requerimiento);
+        console.log('✅ Requerimiento creado:', requerimientoGuardado.id_requerimiento);
+
+        // 5. CREAR VERSIONAMIENTO SI EXISTE
+        if (createSirecqInternoDto.requerimiento.versiones && createSirecqInternoDto.requerimiento.versiones.length > 0) {
+          for (const versionData of createSirecqInternoDto.requerimiento.versiones) {
+            const versionamiento = new Versionamiento();
+            versionamiento.oficioenviodmi = versionData.oficioenviodmi?? '';
+            versionamiento.fechaenvioreq = versionData.fechaenvioreq ? new Date(versionData.fechaenvioreq) : new Date();          versionamiento.num_version = versionData.num_version || 1;
+            versionamiento.obs_version = versionData.obs_version?? '';
+            versionamiento.createdAt = new Date();
+            versionamiento.updatedAt = new Date();
+            
+            const versionGuardada = await queryRunner.manager.save(versionamiento);
+            
+            // Crear relación Requerimiento-Versionamiento
+            const requerimientoVersion = new RequerimientoVersion();
+            requerimientoVersion.requerimiento = requerimientoGuardado;
+            requerimientoVersion.versionamiento = versionGuardada;
+            requerimientoVersion.createdAt = new Date();
+            requerimientoVersion.updatedAt = new Date();
+            
+            await queryRunner.manager.save(requerimientoVersion);
+          }
+          console.log('✅ Versionamiento creado');
+        }
+
+        // 6. CREAR SIREQ EXTERNO
+        const sirecqExternoData: Partial<SirecqExterno> = {
+          tramitepr: createSirecqInternoDto.sirecqExterno.tramitepr,
+          seguimientoinst: createSirecqInternoDto.sirecqExterno.seguimientoinst,
+          tramitecat: createSirecqInternoDto.sirecqExterno.tramitecat,
+          observacionesgen: createSirecqInternoDto.sirecqExterno.observacionesgen,
+          requerimiento: requerimientoGuardado,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+
+        // Asignar dependencia si existe
+        if (createSirecqInternoDto.sirecqExterno.id_dependencia) {
+          const dependencia = await this.dependenciaRepository.findOne({
+            where: { id_dependencia: createSirecqInternoDto.sirecqExterno.id_dependencia }
+          });
+          sirecqExternoData.dependencia = dependencia;
+        }
+
+        const sirecqExterno = this.sirecqExternoRepository.create(sirecqExternoData);
+        const sirecqExternoGuardado = await queryRunner.manager.save(sirecqExterno);
+        console.log('✅ SirecqExterno creado:', sirecqExternoGuardado.id_sirecq_externo);
+
+        // 7. CREAR SIREQ INTERNO
+        const sirecqInternoData: Partial<SirecqInterno> = {
+          fecha_env_dmc: createSirecqInternoDto.fecha_env_dmc ? new Date(createSirecqInternoDto.fecha_env_dmc) : undefined,
+          obsv_tecnica: createSirecqInternoDto.obsv_tecnica,
+          sirecqExterno: sirecqExternoGuardado,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+
+        // Asignar clasificación catastral si existe
+        if (createSirecqInternoDto.id_clasif_catastral) {
+          const clasifCatastral = await this.clasifCatastralRepository.findOne({
+            where: { id_clasif_catastral: createSirecqInternoDto.id_clasif_catastral }
+          });
+          
+          // ✅ VERIFICAR QUE NO SEA NULL ANTES DE ASIGNAR
+          if (clasifCatastral) {
+            sirecqInternoData.clasifCatastral = clasifCatastral;
+          }
+        }
+
+        const sirecqInterno = this.sirecqInternoRepository.create(sirecqInternoData);
+        const sirecqInternoGuardado = await queryRunner.manager.save(sirecqInterno);
+        console.log('✅ SirecqInterno creado:', sirecqInternoGuardado.id_sirecq_interno);
+
+        // 8. ASIGNAR USUARIOS EN TABLA ROMPIMIENTO
+        for (const idRolUsuario of usuariosAAsignar) {
+          const usuarioSirecq = this.usuarioSirecqRepository.create({
+            sirecqInterno: { id_sirecq_interno: sirecqInternoGuardado.id_sirecq_interno },
+            rolUsuario: { id_rol_usuario: idRolUsuario }
+          });
+          await queryRunner.manager.save(usuarioSirecq);
+        }
+
+        console.log(`✅ ${usuariosAAsignar.length} usuarios asignados en tabla rompimiento`);
+
+        await queryRunner.commitTransaction();
+
+        // 9. RETORNAR CON RELACIONES
+        const sirecqInternoCompleto = await this.sirecqInternoRepository.findOne({
+          where: { id_sirecq_interno: sirecqInternoGuardado.id_sirecq_interno },
+          relations: [
+            'sirecqExterno',
+            'sirecqExterno.requerimiento',
+            'sirecqExterno.requerimiento.estadoRequerimiento',
+            'sirecqExterno.requerimiento.categoria',
+            'sirecqExterno.requerimiento.sistema',
+            'sirecqExterno.requerimiento.rolUsuario',
+            'sirecqExterno.requerimiento.rolUsuario.usuario',
+            'sirecqExterno.requerimiento.rolUsuario.rol',
+            'sirecqExterno.requerimiento.requerimientoVersiones',
+            'sirecqExterno.requerimiento.requerimientoVersiones.versionamiento',
+            'sirecqExterno.dependencia',
+            'clasifCatastral',
+            'usuariosSirecq',
+            'usuariosSirecq.rolUsuario',
+            'usuariosSirecq.rolUsuario.usuario',
+            'usuariosSirecq.rolUsuario.rol'
+          ],
+        });
+
+        if (!sirecqInternoCompleto) {
+          throw new HttpException('SirecqInterno no encontrado después de guardar', HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+
+        console.log('✅ SirecqInterno creado exitosamente');
+        return sirecqInternoCompleto;
+
+      } catch (error) {
+        await queryRunner.rollbackTransaction();
+        if (error instanceof HttpException) throw error;
+        throw new HttpException(`Error al crear SirecqInterno: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+      } finally {
+        await queryRunner.release();
+      }
+    }
+
+    async findAll(): Promise<SirecqInterno[]> {
+      try {
+        const sirecqInternos = await this.sirecqInternoRepository.find({
+          relations: [
+            'sirecqExterno',
+            'sirecqExterno.requerimiento',
+            'sirecqExterno.requerimiento.estadoRequerimiento',
+            'sirecqExterno.requerimiento.categoria',
+            'sirecqExterno.requerimiento.sistema',
+            'sirecqExterno.requerimiento.rolUsuario',
+            'sirecqExterno.requerimiento.rolUsuario.usuario',
+            'sirecqExterno.requerimiento.requerimientoVersiones',
+            'sirecqExterno.requerimiento.requerimientoVersiones.versionamiento',
+            'sirecqExterno.dependencia',
+            'clasifCatastral',
+            'usuariosSirecq',
+            'usuariosSirecq.rolUsuario',
+            'usuariosSirecq.rolUsuario.usuario',
+            'usuariosSirecq.rolUsuario.rol'
+          ],
+
+        });
+
+        return sirecqInternos;
+      } catch (error) {
+        throw new HttpException(
+          `Error al obtener SirecqInternos: ${error.message}`,
+          HttpStatus.INTERNAL_SERVER_ERROR
+        );
+      }
+    }
+
+    async findOne(id_sirecq_interno: number): Promise<SirecqInterno> {
+      try {
+        const sirecqInterno = await this.sirecqInternoRepository.findOne({
+          where: { id_sirecq_interno },
+          relations: [
+            'sirecqExterno',
+            'sirecqExterno.requerimiento',
+            'sirecqExterno.requerimiento.estadoRequerimiento',
+            'sirecqExterno.requerimiento.categoria',
+            'sirecqExterno.requerimiento.sistema',
+            'sirecqExterno.requerimiento.rolUsuario',
+            'sirecqExterno.requerimiento.rolUsuario.usuario',
+            'sirecqExterno.requerimiento.requerimientoVersiones',
+            'sirecqExterno.requerimiento.requerimientoVersiones.versionamiento',
+            'sirecqExterno.dependencia',
+            'clasifCatastral',
+            'usuariosSirecq',
+            'usuariosSirecq.rolUsuario',
+            'usuariosSirecq.rolUsuario.usuario',
+            'usuariosSirecq.rolUsuario.rol'
+          ]
+        });
+
+        if (!sirecqInterno) {
+          throw new HttpException('SirecqInterno no encontrado', HttpStatus.NOT_FOUND);
+        }
+
+        return sirecqInterno;
+      } catch (error) {
+        if (error instanceof HttpException) throw error;
+        throw new HttpException(
+          `Error al obtener SirecqInterno: ${error.message}`,
+          HttpStatus.INTERNAL_SERVER_ERROR
+        );
+      }
+    }
+
+    async deleteSirecqInterno(id_sirecq_interno: number): Promise<{ message: string; ids_eliminados: any }> {
+      const queryRunner = this.dataSource.createQueryRunner();
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
+      try {
+        console.log('🗑️ Eliminando SirecqInterno ID:', id_sirecq_interno);
+
+        // Buscar SirecqInterno con relaciones
+        const sirecqInterno = await this.sirecqInternoRepository.findOne({
+          where: { id_sirecq_interno },
+          relations: ['sirecqExterno', 'sirecqExterno.requerimiento']
+        });
+
+        if (!sirecqInterno) {
+          throw new HttpException('SirecqInterno no encontrado', HttpStatus.NOT_FOUND);
+        }
+
+        const idsEliminados = {
+          sirecq_interno: id_sirecq_interno,
+          sirecq_externo: sirecqInterno.sirecqExterno?.id_sirecq_externo || null,
+          requerimiento: sirecqInterno.sirecqExterno?.requerimiento?.id_requerimiento || null
+        };
+
+        // Eliminar SirecqInterno (automáticamente elimina SirecqExterno y Requerimiento por CASCADE)
+        await queryRunner.manager.delete(SirecqInterno, id_sirecq_interno);
+
+        await queryRunner.commitTransaction();
+
+        return {
+          message: 'SirecqInterno, SirecqExterno y Requerimiento eliminados exitosamente',
+          ids_eliminados: idsEliminados
+        };
+
+      } catch (error) {
+        await queryRunner.rollbackTransaction();
+        console.error('💥 Error eliminando SirecqInterno:', error);
+        throw error;
+      } finally {
+        await queryRunner.release();
+      }
+    }
+
+    async updateSirecqInterno(
+      id_sirecq_interno: number,
+      updateSirecqInternoDto: UpdateSirecqInternoDto
+    ): Promise<SirecqInterno> {
+      const queryRunner = this.dataSource.createQueryRunner();
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
+      try {
+        console.log('🔄 Actualizando SirecqInterno ID:', id_sirecq_interno);
+
+        // 1. BUSCAR SIREQ INTERNO EXISTENTE
+        const sirecqInterno = await this.sirecqInternoRepository.findOne({
+          where: { id_sirecq_interno },
+          relations: [
+            'sirecqExterno',
+            'sirecqExterno.requerimiento',
+            'sirecqExterno.dependencia',
+            'clasifCatastral',
+            'usuariosSirecq'
+          ]
+        });
+
+        if (!sirecqInterno) {
+          throw new HttpException('SirecqInterno no encontrado', HttpStatus.NOT_FOUND);
+        }
+
+        // 2. ACTUALIZAR CAMPOS DIRECTOS DE SIREQ INTERNO
+        if (updateSirecqInternoDto.fecha_env_dmc !== undefined) {
+          sirecqInterno.fecha_env_dmc = updateSirecqInternoDto.fecha_env_dmc 
+            ? new Date(updateSirecqInternoDto.fecha_env_dmc) 
+            : null; 
+        }
+
+        if (updateSirecqInternoDto.obsv_tecnica !== undefined) {
+          sirecqInterno.obsv_tecnica = updateSirecqInternoDto.obsv_tecnica;
+        }
+
+        // 3. ACTUALIZAR CLASIFICACIÓN CATASTRAL
+        if (updateSirecqInternoDto.id_clasif_catastral !== undefined) {
+          if (updateSirecqInternoDto.id_clasif_catastral) {
+            const clasifCatastral = await this.clasifCatastralRepository.findOne({
+              where: { id_clasif_catastral: updateSirecqInternoDto.id_clasif_catastral }
+            });
+            
+            if (!clasifCatastral) {
+              throw new HttpException('Clasificación catastral no existe', HttpStatus.NOT_FOUND);
+            }
+            sirecqInterno.clasifCatastral = clasifCatastral;
+          } else {
+            sirecqInterno.clasifCatastral = null;
+          }
+        }
+
+        // 4. ACTUALIZAR SIREQ EXTERNO SI VIENE EN DTO
+        if (updateSirecqInternoDto.sirecqExterno && sirecqInterno.sirecqExterno) {
+          await this.actualizarSirecqExterno(
+            sirecqInterno.sirecqExterno.id_sirecq_externo,
+            updateSirecqInternoDto.sirecqExterno,
+            queryRunner
+          );
+        }
+
+        // 5. ACTUALIZAR REQUERIMIENTO SI VIENE EN DTO
+        if (updateSirecqInternoDto.requerimiento && sirecqInterno.sirecqExterno?.requerimiento) {
+          const datosRequerimiento: any = { ...updateSirecqInternoDto.requerimiento };
+          
+          // Agregar versionamiento si viene
+          if (updateSirecqInternoDto.versionamiento) {
+            datosRequerimiento.versionamiento = updateSirecqInternoDto.versionamiento;
+          }
+
+          await this.requerimientoService.updateRequerimiento(
+            sirecqInterno.sirecqExterno.requerimiento.id_requerimiento,
+            datosRequerimiento
+          );
+        }
+
+        // 6. ACTUALIZAR ASIGNACIONES DE USUARIOS
+        if (updateSirecqInternoDto.id_analista !== undefined || 
+            updateSirecqInternoDto.id_tecnico !== undefined) {
+          
+          await this.actualizarAsignacionesUsuarios(
+            id_sirecq_interno,
+            {
+              id_analista: updateSirecqInternoDto.id_analista,
+              id_tecnico: updateSirecqInternoDto.id_tecnico
+            },
+            queryRunner
+          );
+        }
+
+        // 7. GUARDAR CAMBIOS DE SIREQ INTERNO
+        sirecqInterno.updatedAt = new Date();
+        await queryRunner.manager.save(sirecqInterno);
+        await queryRunner.commitTransaction();
+
+        console.log('✅ SirecqInterno actualizado exitosamente');
+
+        // 8. RETORNAR ACTUALIZADO
+        const sirecqInternoCompleto = await this.sirecqInternoRepository.findOne({
+          where: { id_sirecq_interno },
+          relations: [
+            'sirecqExterno',
+            'sirecqExterno.requerimiento',
+            'sirecqExterno.requerimiento.estadoRequerimiento',
+            'sirecqExterno.requerimiento.categoria',
+            'sirecqExterno.requerimiento.sistema',
+            'sirecqExterno.requerimiento.rolUsuario',
+            'sirecqExterno.requerimiento.rolUsuario.usuario',
+            'sirecqExterno.requerimiento.requerimientoVersiones',
+            'sirecqExterno.requerimiento.requerimientoVersiones.versionamiento',
+            'sirecqExterno.dependencia',
+            'clasifCatastral',
+            'usuariosSirecq',
+            'usuariosSirecq.rolUsuario',
+            'usuariosSirecq.rolUsuario.usuario',
+            'usuariosSirecq.rolUsuario.rol'
+          ]
+        });
+
+        if (!sirecqInternoCompleto) {
+          throw new HttpException('SirecqInterno no encontrado', HttpStatus.NOT_FOUND);
+        }
+        return sirecqInternoCompleto;
+      } catch (error) {
+        await queryRunner.rollbackTransaction();
+        console.error('💥 Error actualizando SirecqInterno:', error);
+        
+        if (error instanceof HttpException) throw error;
+        throw new HttpException(
+          `Error al actualizar SirecqInterno: ${error.message}`,
+          HttpStatus.INTERNAL_SERVER_ERROR
+        );
+      } finally {
+        await queryRunner.release();
+      }
+    }
+
+    // 🛠️ MÉTODO AUXILIAR PARA ACTUALIZAR SIREQ EXTERNO
+    private async actualizarSirecqExterno(
+      id_sirecq_externo: number,
+      updateSirecqExternoDto: UpdateSirecqExternoDto,
+      queryRunner: any
+    ): Promise<void> {
+      const sirecqExterno = await this.sirecqExternoRepository.findOne({
+        where: { id_sirecq_externo },
+        relations: ['dependencia']
+      });
+
+      if (!sirecqExterno) {
+        throw new HttpException('SirecqExterno no encontrado', HttpStatus.NOT_FOUND);
+      }
+
+      // Actualizar campos
+      if (updateSirecqExternoDto.tramitepr !== undefined) {
+        sirecqExterno.tramitepr = updateSirecqExternoDto.tramitepr;
+      }
+      if (updateSirecqExternoDto.seguimientoinst !== undefined) {
+        sirecqExterno.seguimientoinst = updateSirecqExternoDto.seguimientoinst;
+      }
+      if (updateSirecqExternoDto.tramitecat !== undefined) {
+        sirecqExterno.tramitecat = updateSirecqExternoDto.tramitecat;
+      }
+      if (updateSirecqExternoDto.observacionesgen !== undefined) {
+        sirecqExterno.observacionesgen = updateSirecqExternoDto.observacionesgen;
+      }
+
+      // Actualizar dependencia
+      if (updateSirecqExternoDto.id_dependencia !== undefined) {
+        if (updateSirecqExternoDto.id_dependencia) {
+          const dependencia = await this.dependenciaRepository.findOne({
+            where: { id_dependencia: updateSirecqExternoDto.id_dependencia }
+          });
+          
+          if (!dependencia) {
+            throw new HttpException('Dependencia no existe', HttpStatus.NOT_FOUND);
+          }
+          sirecqExterno.dependencia = dependencia;
+        } else {
+          sirecqExterno.dependencia = null;
+        }
+      }
+
+      sirecqExterno.updatedAt = new Date();
+      await queryRunner.manager.save(sirecqExterno);
+    }
+
+    // 🛠️ MÉTODO AUXILIAR PARA ACTUALIZAR ASIGNACIONES DE USUARIOS
+    private async actualizarAsignacionesUsuarios(
+      id_sirecq_interno: number,
+      usuariosDto: {
+        id_analista?: number;
+        id_tecnico?: number;
+      },
+      queryRunner: any
+    ): Promise<void> {
+      // 1. VALIDAR USUARIOS
+      const usuariosAAsignar: number[] = [];
+
+      if (usuariosDto.id_analista !== undefined) {
+        if (usuariosDto.id_analista) {
+          const analistaValido = await this.usersRolService.findOne(usuariosDto.id_analista);
+          if (!analistaValido) throw new HttpException('Analista no válido', HttpStatus.BAD_REQUEST);
+          usuariosAAsignar.push(usuariosDto.id_analista);
+        }
+        // Si es 0 o null, no se asigna (se eliminarán las asignaciones existentes)
+      }
+
+      if (usuariosDto.id_tecnico !== undefined) {
+        if (usuariosDto.id_tecnico) {
+          const tecnicoValido = await this.usersRolService.findOne(usuariosDto.id_tecnico);
+          if (!tecnicoValido) throw new HttpException('Técnico no válido', HttpStatus.BAD_REQUEST);
+          usuariosAAsignar.push(usuariosDto.id_tecnico);
+        }
+        // Si es 0 o null, no se asigna
+      }
+
+      // 2. ELIMINAR ASIGNACIONES EXISTENTES
+      await queryRunner.manager.delete(UsuarioSirecq, {
+        sirecqInterno: { id_sirecq_interno }
+      });
+
+      // 3. CREAR NUEVAS ASIGNACIONES (solo si hay usuarios válidos)
+      for (const idRolUsuario of usuariosAAsignar) {
+        const usuarioSirecq = this.usuarioSirecqRepository.create({
+          sirecqInterno: { id_sirecq_interno },
+          rolUsuario: { id_rol_usuario: idRolUsuario }
+        });
+        await queryRunner.manager.save(usuarioSirecq);
+      }
+
+      console.log(`✅ ${usuariosAAsignar.length} asignaciones de usuarios actualizadas`);
+    }
 }
