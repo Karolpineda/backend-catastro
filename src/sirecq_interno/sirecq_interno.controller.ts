@@ -121,7 +121,6 @@ export class SirecqInternoController {
     }
   }
 
-  // ✅ BÚSQUEDA AVANZADA - Buscar SirecqInterno con filtros
   @Get('buscar/avanzada')
   async buscarAvanzada(
     @Query('fecha_desde') fecha_desde?: string,

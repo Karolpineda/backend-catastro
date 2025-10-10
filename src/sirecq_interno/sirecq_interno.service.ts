@@ -367,49 +367,104 @@ export class SirecqInternoService {
       }
     }
 
-    async deleteSirecqInterno(id_sirecq_interno: number): Promise<{ message: string; ids_eliminados: any }> {
-      const queryRunner = this.dataSource.createQueryRunner();
-      await queryRunner.connect();
-      await queryRunner.startTransaction();
 
-      try {
-        console.log('🗑️ Eliminando SirecqInterno ID:', id_sirecq_interno);
+// sirecq-interno.service.ts - DELETE CON DEPURACIÓN
+async deleteSirecqInterno(id_sirecq_interno: number): Promise<{ message: string; ids_eliminados: any }> {
+  const queryRunner = this.dataSource.createQueryRunner();
+  await queryRunner.connect();
+  await queryRunner.startTransaction();
 
-        // Buscar SirecqInterno con relaciones
-        const sirecqInterno = await this.sirecqInternoRepository.findOne({
-          where: { id_sirecq_interno },
-          relations: ['sirecqExterno', 'sirecqExterno.requerimiento']
-        });
+  try {
+    console.log('🗑️ ===== INICIANDO ELIMINACIÓN SIREQ INTERNO =====');
+    console.log('🆔 ID a eliminar:', id_sirecq_interno);
 
-        if (!sirecqInterno) {
-          throw new HttpException('SirecqInterno no encontrado', HttpStatus.NOT_FOUND);
-        }
+    // 1. BUSCAR SIREQ INTERNO CON RELACIONES DE USUARIOS
+    console.log('🔍 Buscando SirecqInterno con relaciones...');
+    const sirecqInterno = await this.sirecqInternoRepository.findOne({
+      where: { id_sirecq_interno },
+      relations: [
+        'usuariosSirecq', // ✅ Asegurar que cargue las relaciones de usuarios
+        'sirecqExterno',
+        'sirecqExterno.requerimiento'
+      ]
+    });
 
-        const idsEliminados = {
-          sirecq_interno: id_sirecq_interno,
-          sirecq_externo: sirecqInterno.sirecqExterno?.id_sirecq_externo || null,
-          requerimiento: sirecqInterno.sirecqExterno?.requerimiento?.id_requerimiento || null
-        };
-
-        // Eliminar SirecqInterno (automáticamente elimina SirecqExterno y Requerimiento por CASCADE)
-        await queryRunner.manager.delete(SirecqInterno, id_sirecq_interno);
-
-        await queryRunner.commitTransaction();
-
-        return {
-          message: 'SirecqInterno, SirecqExterno y Requerimiento eliminados exitosamente',
-          ids_eliminados: idsEliminados
-        };
-
-      } catch (error) {
-        await queryRunner.rollbackTransaction();
-        console.error('💥 Error eliminando SirecqInterno:', error);
-        throw error;
-      } finally {
-        await queryRunner.release();
-      }
+    if (!sirecqInterno) {
+      console.log('❌ SirecqInterno no encontrado');
+      throw new HttpException('SirecqInterno no encontrado', HttpStatus.NOT_FOUND);
     }
 
+    console.log('✅ SirecqInterno encontrado');
+    console.log('👥 Usuarios relacionados:', sirecqInterno.usuariosSirecq?.length || 0);
+
+    const idsEliminados = {
+      sirecq_interno: id_sirecq_interno,
+      sirecq_externo: sirecqInterno.sirecqExterno?.id_sirecq_externo || null,
+      requerimiento: sirecqInterno.sirecqExterno?.requerimiento?.id_requerimiento || null,
+      usuarios_sirecq: sirecqInterno.usuariosSirecq?.length || 0
+    };
+
+    // 2. 🗑️ ELIMINAR RELACIONES EN USUARIO_SIRECQ (CRÍTICO)
+    if (sirecqInterno.usuariosSirecq && sirecqInterno.usuariosSirecq.length > 0) {
+      console.log(`🗑️ Eliminando ${sirecqInterno.usuariosSirecq.length} registros en usuario_sirecq...`);
+      
+      // VERIFICAR QUERY ANTES DE EJECUTAR
+      const deleteQuery = `DELETE FROM usuario_sirecq WHERE id_sirecq_interno = ${id_sirecq_interno}`;
+      console.log('📝 Query a ejecutar:', deleteQuery);
+      
+      const deleteResult = await queryRunner.manager.delete(UsuarioSirecq, {
+        sirecqInterno: { id_sirecq_interno: id_sirecq_interno }
+      });
+      
+      console.log('✅ Resultado eliminación usuario_sirecq:', deleteResult);
+      
+      // VERIFICAR QUE SE ELIMINARON
+      const usuariosRestantes = await queryRunner.manager.count(UsuarioSirecq, {
+        where: { sirecqInterno: { id_sirecq_interno: id_sirecq_interno } }
+      });
+      console.log('🔍 Usuarios restantes después de eliminar:', usuariosRestantes);
+      
+    } else {
+      console.log('ℹ️ No hay relaciones en usuario_sirecq para eliminar');
+    }
+
+    // 3. 🗑️ ELIMINAR SIREQ INTERNO
+    console.log('🗑️ Eliminando SirecqInterno...');
+    const deleteResult = await queryRunner.manager.delete(SirecqInterno, id_sirecq_interno);
+
+    if (deleteResult.affected === 0) {
+      console.log('❌ No se pudo eliminar el SirecqInterno');
+      throw new HttpException('No se pudo eliminar el SirecqInterno', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    console.log('✅ SirecqInterno eliminado correctamente');
+
+    await queryRunner.commitTransaction();
+    console.log('✅ Transacción commitada exitosamente');
+
+    return {
+      message: 'SirecqInterno y todas sus relaciones eliminados exitosamente',
+      ids_eliminados: idsEliminados
+    };
+
+  } catch (error) {
+    await queryRunner.rollbackTransaction();
+    console.error('💥 ERROR CRÍTICO eliminando SirecqInterno:', error);
+    
+    // Depuración adicional del error
+    if (error.code === '23503') {
+      console.error('🔍 ERROR DE INTEGRIDAD REFERENCIAL DETECTADO');
+      console.error('📋 Detalles:', error.detail);
+      console.error('🗃️ Tabla:', error.table);
+      console.error('🔗 Constraint:', error.constraint);
+    }
+    
+    throw error;
+  } finally {
+    await queryRunner.release();
+    console.log('🔚 QueryRunner liberado');
+  }
+}
     async updateSirecqInterno(
       id_sirecq_interno: number,
       updateSirecqInternoDto: UpdateSirecqInternoDto

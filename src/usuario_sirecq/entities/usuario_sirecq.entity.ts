@@ -12,7 +12,9 @@ export class UsuarioSirecq {
   @JoinColumn({ name: 'id_rol_usuario' })
   rolUsuario: Rol_Usuario;
 
-  @ManyToOne(() => SirecqInterno, (sirecqInterno) => sirecqInterno.usuariosSirecq)
+  @ManyToOne(() => SirecqInterno, (sirecqInterno) => sirecqInterno.usuariosSirecq, {
+  onDelete: 'CASCADE' 
+  })
   @JoinColumn({ name: 'id_sirecq_interno' })
   sirecqInterno: SirecqInterno;
 
