@@ -42,10 +42,7 @@ updatedAt: Date;
   // Relación One-to-One con SirecqInterno
   @OneToOne(() => SirecqInterno, (sirecqInterno) => sirecqInterno.sirecqExterno, {
     nullable: true,
-    cascade: true,
-    onDelete: 'SET NULL'
   })
-  @JoinColumn({ name: 'id_sirecq_interno' })
   sirecqInterno: SirecqInterno;
 
   // NUEVA: Relación Many-to-One con Dependencia
