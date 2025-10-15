@@ -21,16 +21,32 @@ export class VersionamientoService {
     }
 
 
-    async updateVersion(id_version: number, updateVersionamientoDto: UpdateVersionamientoDto) {
-      const versionFound = await this.versionRepository.findOne({ where: { id_version: id_version } });
-      if(!versionFound)
-        return new HttpException('Version no encontrada', HttpStatus.NOT_FOUND);
-      else {
-        const updateVersion = Object.assign(versionFound, updateVersionamientoDto);
-        return this.versionRepository.save(updateVersion);
+  async updateVersion(id_version: number, dto: UpdateVersionamientoDto) {
+    const versionFound = await this.versionRepository.findOne({ where: { id_version } });
+    if (!versionFound)
+      throw new HttpException('Versión no encontrada', HttpStatus.NOT_FOUND);
+
+    // ✅ Asegurarse de no tocar num_version ni createdAt
+    const camposPermitidos = [
+      'ofi_desp_pt',
+      'fech_desp_pt',
+      'oficioenviodmi',
+      'fechaenvioreq',
+      'obs_version',
+    ];
+
+    for (const campo of camposPermitidos) {
+      if (dto[campo] !== undefined) {
+        versionFound[campo] = dto[campo];
       }
-      
     }
+
+    versionFound.updatedAt = new Date(); // ✅ actualiza solo timestamp
+
+    return await this.versionRepository.save(versionFound);
+  }
+
+
 
     async removeVersion(id_version: number) {
      const versionFound = await this.versionRepository.findOne({ where: { id_version: id_version } });

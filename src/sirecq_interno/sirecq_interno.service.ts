@@ -532,15 +532,47 @@ async deleteSirecqInterno(id_sirecq_interno: number): Promise<{ message: string;
         if (updateSirecqInternoDto.requerimiento && sirecqInterno.sirecqExterno?.requerimiento) {
           const datosRequerimiento: any = { ...updateSirecqInternoDto.requerimiento };
           
-          // Agregar versionamiento si viene
-          if (updateSirecqInternoDto.versionamiento) {
-            datosRequerimiento.versionamiento = updateSirecqInternoDto.versionamiento;
-          }
 
           await this.requerimientoService.updateRequerimiento(
             sirecqInterno.sirecqExterno.requerimiento.id_requerimiento,
             datosRequerimiento
           );
+
+          // 🆕 6.1 Crear nueva versión si viene en el DTO
+          if (updateSirecqInternoDto.versionamiento) {
+            const versionData = updateSirecqInternoDto.versionamiento;
+            console.log('🆕 Creando nueva versión asociada al requerimiento existente...');
+
+            // Crear entidad de versionamiento
+            const nuevaVersion = this.versionamientoRepository.create({
+              num_version: versionData.num_version || 1,
+              ofi_desp_pt: versionData.ofi_desp_pt || '',
+              fech_desp_pt: versionData.fech_desp_pt ? new Date(versionData.fech_desp_pt) : undefined,
+              oficioenviodmi: versionData.oficioenviodmi || '',
+              fechaenvioreq: versionData.fechaenvioreq ? new Date(versionData.fechaenvioreq) : undefined,
+              obs_version: versionData.obs_version || '',
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            });
+
+            const versionGuardada = await queryRunner.manager.save(nuevaVersion);
+            console.log('✅ Versionamiento creado con ID:', versionGuardada.id_version);
+
+            // Crear relación en tabla intermedia
+            const reqVersion = this.requerimientoVersionRepository.create({
+              requerimiento: {
+                id_requerimiento: sirecqInterno.sirecqExterno.requerimiento.id_requerimiento,
+              },
+              versionamiento: versionGuardada,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            });
+
+            await queryRunner.manager.save(reqVersion);
+            console.log('✅ Relación Requerimiento-Versionamiento creada');
+          }
+
+
         }
 
         // 6. ACTUALIZAR ASIGNACIONES DE USUARIOS

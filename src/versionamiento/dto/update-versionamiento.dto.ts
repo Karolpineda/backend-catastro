@@ -1,4 +1,23 @@
-import { PartialType } from '@nestjs/mapped-types';
-import { CreateVersionamientoDto } from './create-versionamiento.dto';
+import { IsOptional, IsString, IsDateString } from 'class-validator';
 
-export class UpdateVersionamientoDto extends PartialType(CreateVersionamientoDto) {}
+export class UpdateVersionamientoDto {
+  @IsOptional()
+  @IsString()
+  ofi_desp_pt?: string;
+
+  @IsOptional()
+  @IsDateString()
+  fech_desp_pt?: string;
+
+  @IsOptional()
+  @IsString()
+  oficioenviodmi?: string;
+
+  @IsOptional()
+  @IsDateString()
+  fechaenvioreq?: string;
+
+  @IsOptional()
+  @IsString()
+  obs_version?: string;
+}
