@@ -174,17 +174,34 @@ export class SirecqInternoService {
         const requerimientoGuardado = await queryRunner.manager.save(requerimiento);
         console.log('✅ Requerimiento creado:', requerimientoGuardado.id_requerimiento);
 
-        // 5. CREAR VERSIONAMIENTO SI EXISTE
+        // 5. CREAR VERSIONAMIENTO SI EXISTE (con numeración automática)
         if (createSirecqInternoDto.requerimiento.versiones && createSirecqInternoDto.requerimiento.versiones.length > 0) {
-          for (const versionData of createSirecqInternoDto.requerimiento.versiones) {
+          console.log('📝 Creando versiones para el requerimiento...');
+          
+          // Ordenar versiones por num_version si vienen en el DTO (por si acaso)
+          const versionesOrdenadas = createSirecqInternoDto.requerimiento.versiones.sort((a, b) => {
+            const numA = a.num_version || 0;
+            const numB = b.num_version || 0;
+            return numA - numB;
+          });
+
+          let numVersionActual = 1; // Siempre empieza en 1 para CREATE
+
+          for (const versionData of versionesOrdenadas) {
+            console.log(`🔢 Creando versión ${numVersionActual}...`);
+            
             const versionamiento = new Versionamiento();
-            versionamiento.oficioenviodmi = versionData.oficioenviodmi?? '';
-            versionamiento.fechaenvioreq = versionData.fechaenvioreq ? new Date(versionData.fechaenvioreq) : new Date();          versionamiento.num_version = versionData.num_version || 1;
-            versionamiento.obs_version = versionData.obs_version?? '';
+            versionamiento.num_version = numVersionActual; // ✅ Numeración automática
+            versionamiento.oficioenviodmi = versionData.oficioenviodmi ?? '';
+            versionamiento.fechaenvioreq = versionData.fechaenvioreq ? new Date(versionData.fechaenvioreq) : new Date();
+            versionamiento.obs_version = versionData.obs_version ?? '';
+            versionamiento.ofi_desp_pt = versionData.ofi_desp_pt ?? '';
+            versionamiento.fech_desp_pt = versionData.fech_desp_pt ? new Date(versionData.fech_desp_pt) : new Date();;
             versionamiento.createdAt = new Date();
             versionamiento.updatedAt = new Date();
             
             const versionGuardada = await queryRunner.manager.save(versionamiento);
+            console.log(`✅ Versión ${numVersionActual} creada con ID: ${versionGuardada.id_version}`);
             
             // Crear relación Requerimiento-Versionamiento
             const requerimientoVersion = new RequerimientoVersion();
@@ -194,8 +211,12 @@ export class SirecqInternoService {
             requerimientoVersion.updatedAt = new Date();
             
             await queryRunner.manager.save(requerimientoVersion);
+            console.log(`✅ Relación creada para versión ${numVersionActual}`);
+            
+            numVersionActual++; // Incrementar para la siguiente versión
           }
-          console.log('✅ Versionamiento creado');
+          
+          console.log(`✅ Total de versiones creadas: ${versionesOrdenadas.length}`);
         }
 
         // 6. CREAR SIREQ EXTERNO
