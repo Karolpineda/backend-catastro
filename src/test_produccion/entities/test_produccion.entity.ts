@@ -6,19 +6,19 @@ export class TestProduccion {
     @PrimaryGeneratedColumn()
     id_test_produccion: number;
 
-    @Column()
+    @Column({ type: 'int', nullable: true})
     id_rol_usuario: number;
 
-    @Column('varchar')
+    @Column({ type: 'varchar', length: 100, nullable: true})
     etapa_implementation: string;
 
-    @Column('varchar')
+    @Column({ type: 'varchar', length: 455, nullable: true})
     respuesta_tics: string;
 
-    @Column('varchar')
+    @Column({ type: 'varchar', length: 455, nullable: true})
     descripcion: string;
 
-    @Column('varchar')
+    @Column({ type: 'varchar', length: 50, nullable: true})
     no_requerimiento: string;
 
     @CreateDateColumn()
