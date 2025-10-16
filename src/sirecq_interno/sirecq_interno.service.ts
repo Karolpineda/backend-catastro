@@ -19,6 +19,7 @@ import { UsersRolService } from '../users_rol/users_rol.service';
 import { RequerimientoService } from '../requerimiento/requerimiento.service';
 import { UpdateSirecqExternoDto } from 'src/sirecq_externo/dto/update-sirecq_externo.dto';
 
+
 @Injectable()
 export class SirecqInternoService {
   [x: string]: any;
@@ -64,7 +65,9 @@ export class SirecqInternoService {
     private readonly dataSource: DataSource
     ) {}
 
-
+    async getAnalistas() {
+        return this.usersRolService.getAnalistasIncidentes();
+      }
     async createSirecqInterno(createSirecqInternoDto: CreateSirecqInternoDto): Promise<SirecqInterno> {
       const queryRunner = this.dataSource.createQueryRunner();
       await queryRunner.connect();
@@ -245,6 +248,8 @@ export class SirecqInternoService {
         const sirecqInternoData: Partial<SirecqInterno> = {
           fecha_env_dmc: (createSirecqInternoDto.fecha_env_dmc as any) || null,
           obsv_tecnica: createSirecqInternoDto.obsv_tecnica,
+          prioridad: createSirecqInternoDto.prioridad,
+          tecnico: createSirecqInternoDto.tecnico,
           sirecqExterno: sirecqExternoGuardado,
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -522,6 +527,12 @@ async updateSirecqInterno(
 
     if (updateSirecqInternoDto.obsv_tecnica !== undefined) {
       sirecqInterno.obsv_tecnica = updateSirecqInternoDto.obsv_tecnica;
+    }
+    if (updateSirecqInternoDto.prioridad !== undefined) {
+      sirecqInterno.prioridad = updateSirecqInternoDto.prioridad;
+    }
+    if (updateSirecqInternoDto.tecnico !== undefined) {
+      sirecqInterno.tecnico = updateSirecqInternoDto.tecnico;
     }
 
     // 3. ACTUALIZAR CLASIFICACIÓN CATASTRAL

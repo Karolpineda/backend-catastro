@@ -20,6 +20,12 @@ export class SirecqInterno {
   @Column({ type: 'int', name: 'id_sirecq_externo', nullable: true, unique: true })
   id_sirecq_externo: number;
 
+  @Column({ type: 'int', nullable: true })
+  prioridad: number;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  tecnico: string;
+
   @CreateDateColumn()
   createdAt: Date;
 

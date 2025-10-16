@@ -26,6 +26,15 @@ export class UpdateSirecqInternoDto {
   @IsInt()
   id_tecnico?: number;
 
+
+  @IsOptional()
+  @IsInt()
+  prioridad?: number;
+
+  @IsOptional()
+  @IsString()
+  tecnico?: string;
+
   // Requerimiento
   @IsOptional()
   @ValidateNested()
