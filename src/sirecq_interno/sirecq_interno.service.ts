@@ -193,10 +193,9 @@ export class SirecqInternoService {
             const versionamiento = new Versionamiento();
             versionamiento.num_version = numVersionActual; // ✅ Numeración automática
             versionamiento.oficioenviodmi = versionData.oficioenviodmi ?? '';
-            versionamiento.fechaenvioreq = versionData.fechaenvioreq ? new Date(versionData.fechaenvioreq) : new Date();
+            versionamiento.fechaenvioreq = (versionData.fechaenvioreq as any) || null;
             versionamiento.obs_version = versionData.obs_version ?? '';
-            versionamiento.ofi_desp_pt = versionData.ofi_desp_pt ?? '';
-            versionamiento.fech_desp_pt = versionData.fech_desp_pt ? new Date(versionData.fech_desp_pt) : new Date();;
+            versionamiento.fech_desp_pt = (versionData.fech_desp_pt as any) || null;
             versionamiento.createdAt = new Date();
             versionamiento.updatedAt = new Date();
             
@@ -244,7 +243,7 @@ export class SirecqInternoService {
 
         // 7. CREAR SIREQ INTERNO
         const sirecqInternoData: Partial<SirecqInterno> = {
-          fecha_env_dmc: createSirecqInternoDto.fecha_env_dmc ? new Date(createSirecqInternoDto.fecha_env_dmc) : undefined,
+          fecha_env_dmc: (createSirecqInternoDto.fecha_env_dmc as any) || null,
           obsv_tecnica: createSirecqInternoDto.obsv_tecnica,
           sirecqExterno: sirecqExternoGuardado,
           createdAt: new Date(),
@@ -625,9 +624,9 @@ async updateSirecqInterno(
       const nuevaVersion = queryRunner.manager.create(Versionamiento, {
         num_version: nuevoNumVersion, // ✅ Ahora es automático
         ofi_desp_pt: versionData.ofi_desp_pt || '',
-        fech_desp_pt: versionData.fech_desp_pt ? new Date(versionData.fech_desp_pt) : undefined,
+        fech_desp_pt: versionData.fech_desp_pt = (versionData.fech_desp_pt as any) || null,
         oficioenviodmi: versionData.oficioenviodmi || '',
-        fechaenvioreq: versionData.fechaenvioreq ? new Date(versionData.fechaenvioreq) : new Date(),
+        fechaenvioreq: versionData.fechaenvioreq = (versionData.fechaenvioreq as any) || null,
         obs_version: versionData.obs_version || '',
         createdAt: new Date(),
         updatedAt: new Date(),

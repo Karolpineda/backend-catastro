@@ -7,7 +7,7 @@ import { CreateSirecqExternoDto } from 'src/sirecq_externo/dto/create-sirecq_ext
 export class CreateSirecqInternoDto {
   @IsOptional()
   @IsDateString()
-  fecha_env_dmc?: string;
+  fecha_env_dmc?: Date;
 
   @IsOptional()
   @IsString()

@@ -10,14 +10,14 @@ export class Versionamiento {
     @Column({ nullable: true})
     oficioenviodmi:string
 
-    @Column({type:'date', nullable: true})
-    fechaenvioreq: Date
+    @Column({ type: 'date', nullable: true })
+    fechaenvioreq: Date | null;
 
      @Column({nullable: true})
     ofi_desp_pt:string
 
-    @Column({type:'date', nullable: true})
-    fech_desp_pt: Date
+    @Column({ type: 'date', nullable: true })
+    fech_desp_pt: Date | null;
 
     @Column({nullable: true})
     num_version: number

@@ -7,7 +7,7 @@ export class UpdateVersionamientoDto {
 
   @IsOptional()
   @IsDateString()
-  fech_desp_pt?: string;
+  fech_desp_pt?: Date;
 
   @IsOptional()
   @IsString()
@@ -15,7 +15,7 @@ export class UpdateVersionamientoDto {
 
   @IsOptional()
   @IsDateString()
-  fechaenvioreq?: string;
+  fechaenvioreq?: Date;
 
   @IsOptional()
   @IsString()
