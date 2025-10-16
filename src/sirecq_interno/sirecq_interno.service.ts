@@ -546,7 +546,15 @@ async updateSirecqInterno(
         updateSirecqInternoDto.sirecqExterno,
         queryRunner
       );
+
+      // ✅ Refrescar relación después de guardar
+      const refreshedExterno = await queryRunner.manager.findOne(SirecqExterno, {
+        where: { id_sirecq_externo: sirecqInterno.sirecqExterno.id_sirecq_externo },
+        relations: ['dependencia'],
+      });
+      sirecqInterno.sirecqExterno = refreshedExterno;
     }
+
 
     // 5. ACTUALIZAR REQUERIMIENTO SI VIENE EN DTO
     if (updateSirecqInternoDto.requerimiento && sirecqInterno.sirecqExterno?.requerimiento) {
@@ -718,54 +726,59 @@ async updateSirecqInterno(
   }
 }
 
-    // 🛠️ MÉTODO AUXILIAR PARA ACTUALIZAR SIREQ EXTERNO
-    private async actualizarSirecqExterno(
-      id_sirecq_externo: number,
-      updateSirecqExternoDto: UpdateSirecqExternoDto,
-      queryRunner: any
-    ): Promise<void> {
-      const sirecqExterno = await this.sirecqExternoRepository.findOne({
-        where: { id_sirecq_externo },
-        relations: ['dependencia']
+// 🛠️ MÉTODO AUXILIAR PARA ACTUALIZAR SIREQ EXTERNO (CORREGIDO)
+private async actualizarSirecqExterno(
+  id_sirecq_externo: number,
+  updateSirecqExternoDto: UpdateSirecqExternoDto,
+  queryRunner: any
+): Promise<void> {
+  // ✅ Usamos el queryRunner para mantener la transacción
+  const sirecqExterno = await queryRunner.manager.findOne(SirecqExterno, {
+    where: { id_sirecq_externo },
+    relations: ['dependencia'],
+  });
+
+  if (!sirecqExterno) {
+    throw new HttpException('SirecqExterno no encontrado', HttpStatus.NOT_FOUND);
+  }
+
+  // 🔹 Actualizar campos base
+  if (updateSirecqExternoDto.tramitepr !== undefined)
+    sirecqExterno.tramitepr = updateSirecqExternoDto.tramitepr;
+
+  if (updateSirecqExternoDto.seguimientoinst !== undefined)
+    sirecqExterno.seguimientoinst = updateSirecqExternoDto.seguimientoinst;
+
+  if (updateSirecqExternoDto.tramitecat !== undefined)
+    sirecqExterno.tramitecat = updateSirecqExternoDto.tramitecat;
+
+  if (updateSirecqExternoDto.observacionesgen !== undefined)
+    sirecqExterno.observacionesgen = updateSirecqExternoDto.observacionesgen;
+
+  // 🔹 Actualizar dependencia dentro de la misma transacción
+  if (updateSirecqExternoDto.id_dependencia !== undefined) {
+    if (updateSirecqExternoDto.id_dependencia) {
+      const dependencia = await queryRunner.manager.findOne(Dependencia, {
+        where: { id_dependencia: updateSirecqExternoDto.id_dependencia },
       });
 
-      if (!sirecqExterno) {
-        throw new HttpException('SirecqExterno no encontrado', HttpStatus.NOT_FOUND);
+      if (!dependencia) {
+        throw new HttpException('Dependencia no existe', HttpStatus.NOT_FOUND);
       }
 
-      // Actualizar campos
-      if (updateSirecqExternoDto.tramitepr !== undefined) {
-        sirecqExterno.tramitepr = updateSirecqExternoDto.tramitepr;
-      }
-      if (updateSirecqExternoDto.seguimientoinst !== undefined) {
-        sirecqExterno.seguimientoinst = updateSirecqExternoDto.seguimientoinst;
-      }
-      if (updateSirecqExternoDto.tramitecat !== undefined) {
-        sirecqExterno.tramitecat = updateSirecqExternoDto.tramitecat;
-      }
-      if (updateSirecqExternoDto.observacionesgen !== undefined) {
-        sirecqExterno.observacionesgen = updateSirecqExternoDto.observacionesgen;
-      }
-
-      // Actualizar dependencia
-      if (updateSirecqExternoDto.id_dependencia !== undefined) {
-        if (updateSirecqExternoDto.id_dependencia) {
-          const dependencia = await this.dependenciaRepository.findOne({
-            where: { id_dependencia: updateSirecqExternoDto.id_dependencia }
-          });
-          
-          if (!dependencia) {
-            throw new HttpException('Dependencia no existe', HttpStatus.NOT_FOUND);
-          }
-          sirecqExterno.dependencia = dependencia;
-        } else {
-          sirecqExterno.dependencia = null;
-        }
-      }
-
-      sirecqExterno.updatedAt = new Date();
-      await queryRunner.manager.save(sirecqExterno);
+      sirecqExterno.dependencia = dependencia;
+      console.log('✅ Dependencia actualizada a:', dependencia.id_dependencia);
+    } else {
+      sirecqExterno.dependencia = null;
+      console.log('⚙️ Dependencia eliminada');
     }
+  }
+
+  sirecqExterno.updatedAt = new Date();
+  await queryRunner.manager.save(SirecqExterno, sirecqExterno);
+  console.log('✅ SirecqExterno actualizado correctamente (misma transacción)');
+}
+
 
     // 🛠️ MÉTODO AUXILIAR PARA ACTUALIZAR ASIGNACIONES DE USUARIOS
     private async actualizarAsignacionesUsuarios(
