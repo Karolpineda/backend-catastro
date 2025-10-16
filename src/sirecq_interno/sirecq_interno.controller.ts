@@ -169,4 +169,9 @@ async findAll(
       throw error;
     }
   }
+
+      @Get('responsable')
+      async getAnalistas() {
+        return this.sirecqInternoService.getAnalistas();
+      }
 }
