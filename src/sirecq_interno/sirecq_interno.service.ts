@@ -318,30 +318,61 @@ export class SirecqInternoService {
       }
     }
 
-    async findAll(): Promise<SirecqInterno[]> {
+    async findAll(query: any): Promise<any> {
       try {
-        const sirecqInternos = await this.sirecqInternoRepository.find({
-          relations: [
-            'sirecqExterno',
-            'sirecqExterno.requerimiento',
-            'sirecqExterno.requerimiento.estadoRequerimiento',
-            'sirecqExterno.requerimiento.categoria',
-            'sirecqExterno.requerimiento.sistema',
-            'sirecqExterno.requerimiento.rolUsuario',
-            'sirecqExterno.requerimiento.rolUsuario.usuario',
-            'sirecqExterno.requerimiento.requerimientoVersiones',
-            'sirecqExterno.requerimiento.requerimientoVersiones.versionamiento',
-            'sirecqExterno.dependencia',
-            'clasifCatastral',
-            'usuariosSirecq',
-            'usuariosSirecq.rolUsuario',
-            'usuariosSirecq.rolUsuario.usuario',
-            'usuariosSirecq.rolUsuario.rol'
-          ],
+        const {
+          page = 1,
+          pageSize = 10,
+          search = "",
+          status = "",
+        } = query;
 
-        });
+        const qb = this.sirecqInternoRepository
+          .createQueryBuilder("sirecq")
+          .leftJoinAndSelect("sirecq.sirecqExterno", "sirecqExterno")
+          .leftJoinAndSelect("sirecqExterno.requerimiento", "requerimiento")
+          .leftJoinAndSelect("requerimiento.estadoRequerimiento", "estadoRequerimiento")
+          .leftJoinAndSelect("requerimiento.categoria", "categoria")
+          .leftJoinAndSelect("requerimiento.sistema", "sistema")
+          .leftJoinAndSelect("requerimiento.rolUsuario", "rolUsuario")
+          .leftJoinAndSelect("rolUsuario.usuario", "usuarioRol")
+          .leftJoinAndSelect("requerimiento.requerimientoVersiones", "requerimientoVersiones")
+          .leftJoinAndSelect("requerimientoVersiones.versionamiento", "versionamiento")
+          .leftJoinAndSelect("sirecqExterno.dependencia", "dependencia")
+          .leftJoinAndSelect("sirecq.clasifCatastral", "clasifCatastral")
+          .leftJoinAndSelect("sirecq.usuariosSirecq", "usuariosSirecq")
+          .leftJoinAndSelect("usuariosSirecq.rolUsuario", "rolUsuarioUsuario")
+          .leftJoinAndSelect("rolUsuarioUsuario.usuario", "usuarioSirecq")
+          .leftJoinAndSelect("rolUsuarioUsuario.rol", "rolUsuarioRol")
+          .orderBy("sirecq.id_sirecq_interno", "DESC");
 
-        return sirecqInternos;
+        // 🔍 Filtro de búsqueda (por número de requerimiento)
+        if (search) {
+          qb.andWhere(
+            "LOWER(requerimiento.no_requerimiento) LIKE LOWER(:search)",
+            { search: `%${search}%` }
+          );
+        }
+
+        // ✅ Filtro por estado (coincidencia exacta, ignorando mayúsculas)
+        if (status && status.toUpperCase() !== "TODOS") {
+          qb.andWhere(
+            "UPPER(estadoRequerimiento.nombre_estado_requerimiento) = :status",
+            { status: status.toUpperCase() }
+          );
+        }
+
+        // 🔹 Paginación
+        qb.skip((page - 1) * pageSize).take(pageSize);
+
+        const [items, total] = await qb.getManyAndCount();
+
+        return {
+          items,
+          total,
+          page: Number(page),
+          totalPages: Math.ceil(total / pageSize),
+        };
       } catch (error) {
         throw new HttpException(
           `Error al obtener SirecqInternos: ${error.message}`,
@@ -349,6 +380,7 @@ export class SirecqInternoService {
         );
       }
     }
+
 
     async findOne(id_sirecq_interno: number): Promise<SirecqInterno> {
       try {

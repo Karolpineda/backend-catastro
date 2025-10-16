@@ -32,24 +32,36 @@ export class SirecqInternoController {
   }
 
   // ✅ GET ALL - Obtener todos los SirecqInterno
-  @Get()
-  async findAll(): Promise<{ 
-    success: boolean; 
-    message: string; 
-    data: SirecqInterno[] 
-  }> {
-    try {
-      const sirecqInternos = await this.sirecqInternoService.findAll();
-      
-      return {
-        success: true,
-        message: 'SirecqInternos obtenidos exitosamente',
-        data: sirecqInternos
-      };
-    } catch (error) {
-      throw error;
-    }
+ // ✅ GET ALL - Obtener todos los SirecqInterno con filtros dinámicos
+@Get()
+async findAll(
+  @Query('page') page: number = 1,
+  @Query('pageSize') pageSize: number = 10,
+  @Query('search') search: string = "",
+  @Query('status') status: string = ""
+): Promise<{ 
+  success: boolean; 
+  message: string; 
+  data: any 
+}> {
+  try {
+    const sirecqInternos = await this.sirecqInternoService.findAll({
+      page,
+      pageSize,
+      search,
+      status,
+    });
+
+    return {
+      success: true,
+      message: "SirecqInternos obtenidos exitosamente",
+      data: sirecqInternos,
+    };
+  } catch (error) {
+    throw error;
   }
+}
+
 
   // ✅ GET BY ID - Obtener SirecqInterno por ID
   @Get(':id')
