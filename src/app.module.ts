@@ -20,6 +20,8 @@ import { UsuarioSirecqModule } from './usuario_sirecq/usuario_sirecq.module';
 import { SirecqInternoModule } from './sirecq_interno/sirecq_interno.module';
 import { SirecqExternoModule } from './sirecq_externo/sirecq_externo.module';
 import { RequerimientoVersionModule } from './requerimiento-version/requerimiento-version.module';
+import { TestVersionModule } from './test-version/test-version.module';
+import { TestProduccionModule } from './test_produccion/test_produccion.module';
 
 @Module({
   imports: [
@@ -58,6 +60,8 @@ import { RequerimientoVersionModule } from './requerimiento-version/requerimient
     SirecqInternoModule,
     SirecqExternoModule,
     RequerimientoVersionModule,
+    TestVersionModule,
+    TestProduccionModule,
   ],
   controllers: [],
 })
