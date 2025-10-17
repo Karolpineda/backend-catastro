@@ -639,6 +639,22 @@ if (updateSirecqInternoDto.requerimiento && sirecqInterno.sirecqExterno) {
     console.log('✅ Sistema actualizado directamente a ID:', sistema.id_sistema);
   }
 
+  // ✅ NUEVO: actualizar rol_usuario (responsable)
+  if (datosRequerimiento.id_rol_usuario) {
+    const rolUsuario = await queryRunner.manager.findOne(Rol_Usuario, {
+      where: { id_rol_usuario: datosRequerimiento.id_rol_usuario },
+      relations: ['usuario', 'rol'],
+    });
+
+    if (!rolUsuario) {
+      throw new HttpException('Rol de usuario no encontrado', HttpStatus.NOT_FOUND);
+    }
+
+    updateData.id_rol_usuario = rolUsuario.id_rol_usuario;
+    console.log('✅ RolUsuario actualizado a ID:', rolUsuario.id_rol_usuario);
+  }
+
+
   await queryRunner.manager
     .createQueryBuilder()
     .update(Requerimiento)
