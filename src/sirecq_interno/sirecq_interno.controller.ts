@@ -9,6 +9,18 @@ import { SirecqInterno } from './entities/sirecq_interno.entity';
 export class SirecqInternoController {
   constructor(private readonly sirecqInternoService: SirecqInternoService) {}
 
+
+  
+      @Get('responsable')
+      async getAnalistas() {
+        const analistas = await this.sirecqInternoService.getAnalistas();
+        return {
+          success: true,
+          message: 'Analistas obtenidos correctamente',
+          data: analistas,
+        };
+      }
+
   // ✅ CREATE - Crear nuevo SirecqInterno completo
   @Post()
   async create(
@@ -170,8 +182,4 @@ async findAll(
     }
   }
 
-      @Get('responsable')
-      async getAnalistas() {
-        return this.sirecqInternoService.getAnalistas();
-      }
-}
+    }
