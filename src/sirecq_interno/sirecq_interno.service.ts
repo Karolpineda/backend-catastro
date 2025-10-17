@@ -666,55 +666,68 @@ if (updateSirecqInternoDto.requerimiento && sirecqInterno.sirecqExterno) {
 }
 
 
-    // 6. CREAR NUEVA VERSIÓN SI VIENE EN EL DTO
-    if (updateSirecqInternoDto.versionamiento && sirecqInterno.sirecqExterno?.requerimiento) {
-      const versionData = updateSirecqInternoDto.versionamiento;
-      console.log('🆕 Creando nueva versión asociada al requerimiento existente...');
-      console.log('📋 Datos de versión recibidos:', JSON.stringify(versionData, null, 2));
+    
+    // 6. CREAR NUEVA VERSIÓN SI VIENE EN EL DTO (ROBUSTO)
+if (updateSirecqInternoDto.versionamiento) {
+  const versionData = updateSirecqInternoDto.versionamiento;
+  console.log('🆕 Creando nueva versión asociada...');
 
-      const versionesExistentes = await queryRunner.manager
-        .createQueryBuilder(RequerimientoVersion, 'rv')
-        .innerJoinAndSelect('rv.versionamiento', 'v')
-        .where('rv.requerimiento.id_requerimiento = :idReq', {
-          idReq: sirecqInterno.sirecqExterno.requerimiento.id_requerimiento,
-        })
-        .orderBy('v.num_version', 'DESC')
-        .getMany();
+  // 🔍 Buscar el requerimiento asociado de forma segura
+  const reqAsociado =
+    sirecqInterno.sirecqExterno?.requerimiento ||
+    (await queryRunner.manager.findOne(Requerimiento, {
+      where: { id_requerimiento: sirecqInterno.sirecqExterno?.id_requerimiento },
+    }));
 
-      const ultimaVersion = versionesExistentes.length > 0
-        ? versionesExistentes[0].versionamiento.num_version
-        : 0;
-      const nuevoNumVersion = ultimaVersion + 1;
+  if (!reqAsociado) {
+    console.error('❌ No se encontró requerimiento asociado para crear versión');
+  } else {
+    // 🧾 Buscar número de última versión registrada
+    const versionesExistentes = await queryRunner.manager
+      .createQueryBuilder(RequerimientoVersion, 'rv')
+      .innerJoinAndSelect('rv.versionamiento', 'v')
+      .where('rv.requerimiento.id_requerimiento = :idReq', {
+        idReq: reqAsociado.id_requerimiento,
+      })
+      .orderBy('v.num_version', 'DESC')
+      .getMany();
 
-      console.log(`📊 Versiones existentes: ${versionesExistentes.length}`);
-      console.log(`🆕 Nueva versión será: ${nuevoNumVersion}`);
+    const ultimaVersion = versionesExistentes.length > 0
+      ? versionesExistentes[0].versionamiento.num_version
+      : 0;
+    const nuevoNumVersion = ultimaVersion + 1;
 
-      const nuevaVersion = queryRunner.manager.create(Versionamiento, {
-        num_version: nuevoNumVersion,
-        ofi_desp_pt: versionData.ofi_desp_pt || '',
-        fech_desp_pt: (versionData.fech_desp_pt as any) || null,
-        oficioenviodmi: versionData.oficioenviodmi || '',
-        fechaenvioreq: (versionData.fechaenvioreq as any) || null,
-        obs_version: versionData.obs_version || '',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
+    console.log(`📊 Última versión existente: ${ultimaVersion}`);
+    console.log(`🆕 Nueva versión será: ${nuevoNumVersion}`);
 
-      const versionGuardada = await queryRunner.manager.save(Versionamiento, nuevaVersion);
-      console.log('✅ Versionamiento creado con ID:', versionGuardada.id_version);
+    // ⚙️ Crear y guardar nueva versión
+    const nuevaVersion = queryRunner.manager.create(Versionamiento, {
+      num_version: nuevoNumVersion,
+      ofi_desp_pt: versionData.ofi_desp_pt || '',
+      fech_desp_pt: (versionData.fech_desp_pt as any) || null,
+      oficioenviodmi: versionData.oficioenviodmi || '',
+      fechaenvioreq: (versionData.fechaenvioreq as any) || null,
+      obs_version: versionData.obs_version || '',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
 
-      const reqVersion = queryRunner.manager.create(RequerimientoVersion, {
-        requerimiento: {
-          id_requerimiento: sirecqInterno.sirecqExterno.requerimiento.id_requerimiento,
-        },
-        versionamiento: versionGuardada,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
+    const versionGuardada = await queryRunner.manager.save(Versionamiento, nuevaVersion);
+    console.log('✅ Versionamiento creado con ID:', versionGuardada.id_version);
 
-      await queryRunner.manager.save(RequerimientoVersion, reqVersion);
-      console.log('✅ Relación Requerimiento-Versionamiento creada exitosamente');
-    }
+    // Crear relación Requerimiento-Versionamiento
+    const reqVersion = queryRunner.manager.create(RequerimientoVersion, {
+      requerimiento: { id_requerimiento: reqAsociado.id_requerimiento },
+      versionamiento: versionGuardada,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    await queryRunner.manager.save(RequerimientoVersion, reqVersion);
+    console.log('✅ Relación Requerimiento-Versionamiento creada exitosamente');
+  }
+}
+
 
     // 7. ACTUALIZAR ASIGNACIONES DE USUARIOS
     if (
