@@ -21,6 +21,9 @@ export class SirecqExterno {
   @Column({ type: 'text', nullable: true })
   observacionesgen: string;
 
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  responext: string;
+
   @Column({ type: 'int', name: 'id_requerimiento', nullable: true, unique: true })
   id_requerimiento: number;
 

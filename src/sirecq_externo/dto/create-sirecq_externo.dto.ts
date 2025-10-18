@@ -22,6 +22,10 @@ export class CreateSirecqExternoDto {
 
   @IsOptional()
   @IsString()
+  responext?: string;
+
+  @IsOptional()
+  @IsString()
   observacionesgen?: string;
 
   @IsOptional()

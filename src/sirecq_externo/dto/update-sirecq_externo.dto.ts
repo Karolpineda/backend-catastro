@@ -18,6 +18,10 @@ export class UpdateSirecqExternoDto extends PartialType(CreateSirecqExternoDto) 
 
   @IsOptional()
   @IsString()
+  responext?: string;
+
+  @IsOptional()
+  @IsString()
   observacionesgen?: string;
 
   @IsOptional()

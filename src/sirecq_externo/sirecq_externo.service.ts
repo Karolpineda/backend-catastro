@@ -143,6 +143,7 @@ export class SirecqExternoService {
           tramitepr: createSirecqExternoDto.tramitepr,
           seguimientoinst: createSirecqExternoDto.seguimientoinst,
           tramitecat: createSirecqExternoDto.tramitecat,
+          responext: createSirecqExternoDto.responext,
           observacionesgen: createSirecqExternoDto.observacionesgen,
           id_requerimiento: savedRequerimiento.id_requerimiento,
           requerimiento: savedRequerimiento,
@@ -383,7 +384,7 @@ export class SirecqExternoService {
         }
 
         // Actualizar campos de SirecqExterno
-        const camposSirecq = ['tramitepr', 'seguimientoinst', 'tramitecat', 'observacionesgen'];
+        const camposSirecq = ['tramitepr', 'seguimientoinst', 'tramitecat', 'observacionesgen,', 'responext', 'id_dependencia'];
         
         camposSirecq.forEach(campo => {
           if (updateDto[campo] !== undefined) {
