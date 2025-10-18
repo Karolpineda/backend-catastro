@@ -10,7 +10,7 @@ export class UsuarioIncidente {
 
   @ManyToOne(() => Incidente, (incidente) => incidente.usuariosIncidente, {
     onDelete: 'CASCADE',
-    nullable: false // ESTO ES IMPORTANTE
+    nullable: true // ESTO ES IMPORTANTE
   })
   @JoinColumn({ name: 'id_incidente' })
   incidente: Incidente;

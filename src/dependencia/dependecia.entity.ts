@@ -15,10 +15,10 @@ export class Dependencia{
     @Column({nullable: false, default: ''})
     sigla_dependencia: string
 
-    @CreateDateColumn()
+    @CreateDateColumn({nullable: true})
     createdAt: Date;
 
-    @UpdateDateColumn()
+    @UpdateDateColumn({nullable: true})
     updatedAt: Date;
 
   // Relación One-to-Many con SirecqExterno
