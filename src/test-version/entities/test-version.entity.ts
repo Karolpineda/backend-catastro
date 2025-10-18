@@ -13,11 +13,15 @@ export class TestVersion {
     @UpdateDateColumn()
     updatedAt: Date;
 
-    @ManyToOne(() => TestProduccion, testProduction => testProduction.test_versions)
-    @JoinColumn({ name: 'id_test_production' })
-    test_production: TestProduccion;
+    @ManyToOne(() => TestProduccion, (testProduccion) => testProduccion.test_versions, {
+        onDelete: 'CASCADE' 
+    })
+    @JoinColumn({ name: 'id_test_produccion' })
+    test_produccion: TestProduccion;
 
-    @ManyToOne(() => Versionamiento)
+    @ManyToOne(() => Versionamiento, (versionamiento) => versionamiento.test_versions, {
+        onDelete: 'CASCADE' 
+    })
     @JoinColumn({ name: 'id_version' })
     versionamiento: Versionamiento;
 }
