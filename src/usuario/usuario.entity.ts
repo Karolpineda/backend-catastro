@@ -6,19 +6,19 @@ export class Usuario {
   @PrimaryGeneratedColumn()
   id_usuario: number;
 
-  @Column({ type: 'varchar', length: 20 })
+  @Column({ type: 'varchar', length: 20, nullable: true })
   cedula_usuario: string;
 
-  @Column({ type: 'varchar', length: 100 })
+  @Column({ type: 'varchar', length: 100, nullable: true })
   apellidos_usuario: string;
 
-  @Column({ type: 'varchar', length: 100 })
+  @Column({ type: 'varchar', length: 100, nullable: true })
   nombre_usuario: string;
 
-  @Column({ type: 'varchar', length: 100 })
+  @Column({ type: 'varchar', length: 100, nullable: true })
   correo_usuario: string;
 
-  @Column({ type: 'text' })
+  @Column({ type: 'text', nullable: true })
   contrasenia_usuario: string;
 
   // Relación con RolUsuario
