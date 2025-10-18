@@ -195,6 +195,7 @@ export class SirecqInternoService {
             
             const versionamiento = new Versionamiento();
             versionamiento.num_version = numVersionActual; // ✅ Numeración automática
+            versionamiento.ofi_desp_pt = versionData.ofi_desp_pt ?? ''; 
             versionamiento.oficioenviodmi = versionData.oficioenviodmi ?? '';
             versionamiento.fechaenvioreq = (versionData.fechaenvioreq as any) || null;
             versionamiento.obs_version = versionData.obs_version ?? '';

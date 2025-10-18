@@ -186,7 +186,7 @@ export class UsersRolService {
   }
 
   // Método para traer a los analistas de incidentes
-  async getAnalistasIncidentes(): Promise<{ id_usuario: number; nombre_completo: string }[]> {
+  async getAnalistasIncidentes(): Promise<{ id_rol_usuario: number; nombre_completo: string }[]> {
     try {
       const usuarios = await this.userRolRepository.find({
         where: { rol: { id_rol: 2 } }, 
@@ -194,7 +194,6 @@ export class UsersRolService {
         select: {
           id_rol_usuario: true,
           usuario: {
-            id_usuario: true,
             nombre_usuario: true,
             apellidos_usuario: true,
           },
@@ -202,7 +201,7 @@ export class UsersRolService {
       });
 
       return usuarios.map(ru => ({
-        id_usuario: ru.usuario.id_usuario,
+        id_rol_usuario: ru.id_rol_usuario, // Este se guardará en tu BD
         nombre_completo: `${ru.usuario.nombre_usuario} ${ru.usuario.apellidos_usuario}`,
       }));
     } catch (error) {
@@ -212,7 +211,6 @@ export class UsersRolService {
       );
     }
   }
-
   // Método para traer a los analistas de accidentes
   async getAnalistasAccidentes(): Promise<{ id_usuario: number; nombre_completo: string }[]> {
     try {
