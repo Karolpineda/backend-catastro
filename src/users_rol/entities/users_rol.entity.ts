@@ -5,6 +5,7 @@ import { UsuarioIncidente } from 'src/usuario_incidente/entities/usuario_inciden
 import { Accidente } from 'src/accidente/entities/accidente.entity'
 import { UsuarioSirecq } from 'src/usuario_sirecq/entities/usuario_sirecq.entity';
 import { Requerimiento } from 'src/requerimiento/entities/requerimiento.entity';
+import { TestProduccion } from 'src/test_produccion/entities/test_produccion.entity';
 
 
 @Entity()
@@ -31,4 +32,8 @@ export class Rol_Usuario {
 
   @OneToMany(() => Requerimiento, (requerimiento) => requerimiento.rolUsuario)
   requerimiento: Requerimiento[];
+
+  @OneToMany(() => TestProduccion, (testProduccion) => testProduccion.rolUsuario)
+  testProducciones: TestProduccion[];
+
 }
