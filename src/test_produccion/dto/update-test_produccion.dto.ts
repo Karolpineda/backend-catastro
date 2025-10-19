@@ -1,6 +1,6 @@
 import { PartialType } from '@nestjs/mapped-types';
 import { CreateTestProduccionDto } from './create-test_produccion.dto';
-import { IsOptional, IsNumber, IsString, Max, IsArray, ValidateNested, ArrayMinSize } from 'class-validator';
+import { IsOptional, IsNumber, IsString, IsDateString, IsArray, ValidateNested, ArrayMinSize } from 'class-validator';
 import { Type } from 'class-transformer';
 
 class VersionamientoUpdateDto {
@@ -11,6 +11,10 @@ class VersionamientoUpdateDto {
   @IsOptional()
   @IsString()
   ofi_desp_pt?: string;
+
+  @IsOptional()
+  @IsDateString()
+  fecha_env?: Date;
 
   @IsOptional()
   @IsString()

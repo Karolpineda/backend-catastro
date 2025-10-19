@@ -10,6 +10,11 @@ export class TestProduccionController {
 
   constructor(private readonly testProduccionService: TestProduccionService) {}
 
+   @Get('ejecutor')
+
+  async gettecnico () {
+    return await this.testProduccionService.ejecutor();
+  }
 
   @Post()
   async create(

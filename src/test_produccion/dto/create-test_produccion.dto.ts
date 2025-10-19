@@ -1,4 +1,4 @@
-import { IsString, IsInt, IsOptional, IsNotEmpty, MaxLength } from 'class-validator';
+import { IsString, IsInt, IsOptional, IsDateString, IsNotEmpty, MaxLength } from 'class-validator';
 
 export class CreateTestProduccionDto {
   @IsInt()
@@ -9,6 +9,10 @@ export class CreateTestProduccionDto {
   @IsOptional()
   @MaxLength(100)
   etapa_implementation?: string;
+
+  @IsOptional()
+  @IsDateString()
+  fecha_env?: Date;
 
   @IsString()
   @IsOptional()

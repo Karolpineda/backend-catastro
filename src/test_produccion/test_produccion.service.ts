@@ -12,6 +12,8 @@ import { Rol_Usuario } from '../users_rol/entities/users_rol.entity';
 import { CreateTestProduccionDto } from 'src/test_produccion/dto/create-test_produccion.dto';
 import { UpdateTestProduccionDto } from 'src/test_produccion/dto/update-test_produccion.dto';
 import { CreateVersionamientoDto } from 'src/versionamiento/dto/create-versionamiento.dto';
+import { UsersRolService } from '../users_rol/users_rol.service';
+
 
 @Injectable()
 export class TestProduccionService {
@@ -25,7 +27,12 @@ export class TestProduccionService {
     @InjectRepository(Rol_Usuario)
     private rolUsuarioRepository: Repository<Rol_Usuario>,
     private dataSource: DataSource,
+    private readonly usersRolService: UsersRolService,
   ) {}
+
+  async ejecutor(){
+    return await this.usersRolService.ejecutor();
+  }
   async create(createDto: CreateTestProduccionDto,versionDto?: CreateVersionamientoDto,): Promise<any> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -289,6 +296,10 @@ export class TestProduccionService {
 
     if (updateTestProduccionDto.no_requerimiento !== undefined) {
       testProduccion.no_requerimiento = updateTestProduccionDto.no_requerimiento;
+    }
+
+    if (updateTestProduccionDto.fecha_env !== undefined) {
+      testProduccion.fecha_env = new Date(updateTestProduccionDto.fecha_env);
     }
 
     // 3. ACTUALIZAR ROL USUARIO SI VIENE EN DTO

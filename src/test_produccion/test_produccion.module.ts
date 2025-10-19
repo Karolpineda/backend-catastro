@@ -6,6 +6,8 @@ import { TestProduccion } from 'src/test_produccion/entities/test_produccion.ent
 import { TestVersion } from 'src/test-version/entities/test-version.entity';
 import { Versionamiento } from 'src/versionamiento/entities/versionamiento.entity';
 import { Rol_Usuario } from 'src/users_rol/entities/users_rol.entity';
+import { UsersRolModule } from '../users_rol/users_rol.module';
+
 
 @Module({
   imports: [
@@ -15,6 +17,7 @@ import { Rol_Usuario } from 'src/users_rol/entities/users_rol.entity';
       Versionamiento,
       Rol_Usuario,
     ]),
+    UsersRolModule,
   ],
   controllers: [TestProduccionController],
   providers: [TestProduccionService],
