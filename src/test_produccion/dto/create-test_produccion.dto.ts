@@ -10,10 +10,6 @@ export class CreateTestProduccionDto {
   @MaxLength(100)
   etapa_implementation?: string;
 
-  @IsOptional()
-  @IsDateString()
-  fecha_env?: Date;
-
   @IsString()
   @IsOptional()
   @MaxLength(455)

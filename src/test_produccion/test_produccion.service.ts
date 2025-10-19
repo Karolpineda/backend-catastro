@@ -298,9 +298,6 @@ export class TestProduccionService {
       testProduccion.no_requerimiento = updateTestProduccionDto.no_requerimiento;
     }
 
-    if (updateTestProduccionDto.fecha_env !== undefined) {
-      testProduccion.fecha_env = new Date(updateTestProduccionDto.fecha_env);
-    }
 
     // 3. ACTUALIZAR ROL USUARIO SI VIENE EN DTO
     if (updateTestProduccionDto.id_rol_usuario !== undefined) {

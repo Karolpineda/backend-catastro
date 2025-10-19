@@ -22,10 +22,6 @@ export class TestProduccion {
     @Column({ type: 'varchar', length: 50, nullable: true})
     no_requerimiento: string;
 
-    @Column({ type: 'date', nullable: true })
-    fecha_env: Date 
-    
-
     @CreateDateColumn()
     createdAt: Date;
   

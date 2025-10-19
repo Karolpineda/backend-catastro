@@ -13,10 +13,6 @@ class VersionamientoUpdateDto {
   ofi_desp_pt?: string;
 
   @IsOptional()
-  @IsDateString()
-  fecha_env?: Date;
-
-  @IsOptional()
   @IsString()
   fech_desp_pt?: string;
 
