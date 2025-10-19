@@ -239,6 +239,32 @@ export class UsersRolService {
     }
   }
 
+  async ejecutor(): Promise<{ id_rol_usuario: number; nombre_completo: string }[]> {
+    try {
+      const usuarios = await this.userRolRepository.find({
+        where: { rol: { id_rol: 8 } }, 
+        relations: ['usuario'],
+        select: {
+          id_rol_usuario: true,
+          usuario: {
+            nombre_usuario: true,
+            apellidos_usuario: true,
+          },
+        },
+      });
+
+      return usuarios.map(ru => ({
+        id_rol_usuario: ru.id_rol_usuario, // Este se guardará en tu BD
+        nombre_completo: `${ru.usuario.nombre_usuario} ${ru.usuario.apellidos_usuario}`,
+      }));
+    } catch (error) {
+      throw new HttpException(
+        'Error al obtener tecnico producción de incidentes',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
 /// MÉTODO PARA TRAER AL TÉCNICO DE REQUERIMIENTOS PENDIENTE SABER QUIENES SON
   //  async getTecnicoReque(): Promise<{ id_usuario: number; nombre_completo: string }[]> {
   //   try {

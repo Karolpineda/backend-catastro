@@ -33,6 +33,13 @@ export class UsersRolController {
     return await this.usersRolService.getAnalistasIncidentes();
   }
 
+  @Get('tecnico')
+  @Roles('Administrador')
+  async gettecnico () {
+    return await this.usersRolService.ejecutor();
+  }
+
+
   @Get('analistasAccidentes')
   async getAnalistasAccidentes() {
     return await this.usersRolService.getAnalistasAccidentes();
