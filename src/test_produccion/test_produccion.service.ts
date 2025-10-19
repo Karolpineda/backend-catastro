@@ -319,62 +319,76 @@ export class TestProduccionService {
     }
 
     // 4. CREAR NUEVA VERSIÓN SI VIENE EN EL DTO
-    if (updateTestProduccionDto.versionamiento) {
-      console.log('🆕 Creando nueva versión durante actualización...');
-      console.log('📦 Datos de versionamiento recibidos:', JSON.stringify(updateTestProduccionDto.versionamiento, null, 2));
-      
-      // PRIMERO GUARDAR LOS CAMBIOS DE TEST_PRODUCCION
-      await queryRunner.manager.save(TestProduccion, testProduccion);
-      console.log('✅ TestProduccion guardado antes de crear versión');
-      
-      const versionesExistentes = await queryRunner.manager
-        .createQueryBuilder(TestVersion, 'tv')
-        .innerJoinAndSelect('tv.versionamiento', 'v')
-        .where('tv.test_produccion.id_test_produccion = :id', { id: id_test_produccion })
-        .orderBy('v.num_version', 'DESC')
-        .getMany();
+    // 4. CREAR NUEVA VERSIÓN SI VIENE EN EL DTO
+if (updateTestProduccionDto.versionamiento) {
+  console.log('🆕 Creando nueva versión durante actualización...');
+  console.log('📦 Datos de versionamiento recibidos:', JSON.stringify(updateTestProduccionDto.versionamiento, null, 2));
+  
+  // PRIMERO GUARDAR LOS CAMBIOS DE TEST_PRODUCCION
+  await queryRunner.manager.save(TestProduccion, testProduccion);
+  console.log('✅ TestProduccion guardado antes de crear versión');
+  
+  const versionesExistentes = await queryRunner.manager
+    .createQueryBuilder(TestVersion, 'tv')
+    .innerJoinAndSelect('tv.versionamiento', 'v')
+    .where('tv.test_produccion.id_test_produccion = :id', { id: id_test_produccion })
+    .orderBy('v.num_version', 'DESC')
+    .getMany();
 
-      const ultimaVersion = versionesExistentes.length > 0
-        ? versionesExistentes[0].versionamiento.num_version
-        : 0;
-      const nuevoNumVersion = ultimaVersion + 1;
+  const ultimaVersion = versionesExistentes.length > 0
+    ? versionesExistentes[0].versionamiento.num_version
+    : 0;
+  const nuevoNumVersion = ultimaVersion + 1;
 
-      const nuevaVersion = new Versionamiento();
-      nuevaVersion.num_version = nuevoNumVersion;
-      nuevaVersion.ofi_desp_pt = updateTestProduccionDto.versionamiento.ofi_desp_pt || null;
-      nuevaVersion.fech_desp_pt = updateTestProduccionDto.versionamiento.fech_desp_pt 
-        ? new Date(updateTestProduccionDto.versionamiento.fech_desp_pt) 
-        : null;
-      nuevaVersion.oficioenviodmi = updateTestProduccionDto.versionamiento.oficioenviodmi || null;
-      nuevaVersion.fechaenvioreq = updateTestProduccionDto.versionamiento.fechaenvioreq 
-        ? new Date(updateTestProduccionDto.versionamiento.fechaenvioreq) 
-        : null;
-      nuevaVersion.obs_version = updateTestProduccionDto.versionamiento.obs_version || null;
+  const nuevaVersion = new Versionamiento();
+  nuevaVersion.num_version = nuevoNumVersion;
+  nuevaVersion.ofi_desp_pt = updateTestProduccionDto.versionamiento.ofi_desp_pt || null;
+  
+  // CORRECCIÓN: Manejo correcto de fechas
+  if (updateTestProduccionDto.versionamiento.fech_desp_pt) {
+    // Usar el string directamente o crear fecha en zona horaria local
+    const fecha = updateTestProduccionDto.versionamiento.fech_desp_pt;
+    nuevaVersion.fech_desp_pt = new Date(fecha + 'T00:00:00'); // Agregar hora para evitar cambio de día
+  } else {
+    nuevaVersion.fech_desp_pt = null;
+  }
+  
+  nuevaVersion.oficioenviodmi = updateTestProduccionDto.versionamiento.oficioenviodmi || null;
+  
+  // CORRECCIÓN: Mismo tratamiento para fechaenvioreq
+  if (updateTestProduccionDto.versionamiento.fechaenvioreq) {
+    const fecha = updateTestProduccionDto.versionamiento.fechaenvioreq;
+    nuevaVersion.fechaenvioreq = new Date(fecha + 'T00:00:00');
+  } else {
+    nuevaVersion.fechaenvioreq = null;
+  }
+  
+  nuevaVersion.obs_version = updateTestProduccionDto.versionamiento.obs_version || null;
 
-      console.log('💾 Versionamiento a guardar:', {
-        num_version: nuevaVersion.num_version,
-        ofi_desp_pt: nuevaVersion.ofi_desp_pt,
-        fech_desp_pt: nuevaVersion.fech_desp_pt,
-        oficioenviodmi: nuevaVersion.oficioenviodmi,
-        fechaenvioreq: nuevaVersion.fechaenvioreq,
-        obs_version: nuevaVersion.obs_version
-      });
+  console.log('💾 Versionamiento a guardar:', {
+    num_version: nuevaVersion.num_version,
+    ofi_desp_pt: nuevaVersion.ofi_desp_pt,
+    fech_desp_pt: nuevaVersion.fech_desp_pt,
+    oficioenviodmi: nuevaVersion.oficioenviodmi,
+    fechaenvioreq: nuevaVersion.fechaenvioreq,
+    obs_version: nuevaVersion.obs_version
+  });
 
-      const versionGuardada = await queryRunner.manager.save(Versionamiento, nuevaVersion);
-      console.log('✅ Versión guardada con ID:', versionGuardada.id_version);
+  const versionGuardada = await queryRunner.manager.save(Versionamiento, nuevaVersion);
+  console.log('✅ Versión guardada con ID:', versionGuardada.id_version);
 
-      const testVersion = new TestVersion();
-      testVersion.test_produccion = testProduccion;
-      testVersion.versionamiento = versionGuardada;
+  const testVersion = new TestVersion();
+  testVersion.test_produccion = testProduccion;
+  testVersion.versionamiento = versionGuardada;
 
-      const testVersionGuardado = await queryRunner.manager.save(TestVersion, testVersion);
-      console.log('✅ TestVersion guardado:', {
-        id_test_version: testVersionGuardado.id_test_version,
-        id_test_produccion: testProduccion.id_test_produccion,
-        id_version: versionGuardada.id_version
-      });
-      console.log(`✅ Nueva versión ${nuevoNumVersion} creada durante actualización`);
-    }
+  const testVersionGuardado = await queryRunner.manager.save(TestVersion, testVersion);
+  console.log('✅ TestVersion guardado:', {
+    id_test_version: testVersionGuardado.id_test_version,
+    id_test_produccion: testProduccion.id_test_produccion,
+    id_version: versionGuardada.id_version
+  });
+  console.log(`✅ Nueva versión ${nuevoNumVersion} creada durante actualización`);
+}
 
     // 5. ACTUALIZAR VERSIONES EXISTENTES SI VIENEN EN DTO
     if (updateTestProduccionDto.versionesActualizadas && updateTestProduccionDto.versionesActualizadas.length > 0) {
