@@ -13,10 +13,10 @@ export class TestProduccion {
     @Column({ type: 'varchar', length: 100, nullable: true})
     etapa_implementation: string ;
 
-    @Column({ type: 'varchar', length: 455, nullable: true})
+    @Column({ type: 'varchar', length: 2000, nullable: true})
     respuesta_tics: string | null;
 
-    @Column({ type: 'varchar', length: 455, nullable: true})
+    @Column({ type: 'varchar', length: 2000, nullable: true})
     descripcion: string | null;
 
     @Column({ type: 'varchar', length: 50, nullable: true})
