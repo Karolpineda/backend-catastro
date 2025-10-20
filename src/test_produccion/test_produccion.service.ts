@@ -401,9 +401,9 @@ if (updateTestProduccionDto.versionamiento) {
             { id_version: versionUpdate.id_version },
             {
               ofi_desp_pt: versionUpdate.ofi_desp_pt,
-              fech_desp_pt: versionUpdate.fech_desp_pt ? new Date(versionUpdate.fech_desp_pt) : null,
+              fech_desp_pt: versionUpdate.fech_desp_pt ? new Date(versionUpdate.fech_desp_pt + 'T00:00:00') : null,
               oficioenviodmi: versionUpdate.oficioenviodmi,
-              fechaenvioreq: versionUpdate.fechaenvioreq ? new Date(versionUpdate.fechaenvioreq) : null,
+              fechaenvioreq: versionUpdate.fechaenvioreq ? new Date(versionUpdate.fechaenvioreq + 'T00:00:00') : null,
               obs_version: versionUpdate.obs_version,
               updatedAt: new Date(),
             }

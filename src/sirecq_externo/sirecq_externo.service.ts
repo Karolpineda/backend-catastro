@@ -316,21 +316,28 @@ export class SirecqExternoService {
       );
     }
 
-    // 3. 🆕 PREPARAR DATOS PARA REQUERIMIENTO INCLUYENDO VERSIONAMIENTO
-    const datosRequerimiento: any = { ...updateCompletoDto.requerimiento };
-    
-    // Si hay versionamiento en el nivel principal, agregarlo al requerimiento
-    if (updateCompletoDto.versionamiento) {
-      datosRequerimiento.versionamiento = updateCompletoDto.versionamiento;
-    }
+// 3. 🆕 PREPARAR DATOS PARA REQUERIMIENTO INCLUYENDO VERSIONAMIENTO
+const datosRequerimiento: any = { ...updateCompletoDto.requerimiento };
 
-    // 4. ✅ ACTUALIZAR REQUERIMIENTO USANDO EL SERVICIO EXISTENTE
-    if (updateCompletoDto.requerimiento || updateCompletoDto.versionamiento) {
-      await this.requerimientoService.updateRequerimiento(
-        sirecqExterno.requerimiento.id_requerimiento,
-        datosRequerimiento
-      );
-    }
+// 🔥 CORRECCIÓN: Pasar versionesActualizadas si viene en requerimiento
+if (updateCompletoDto.requerimiento?.versionesActualizadas) {
+  datosRequerimiento.versionesActualizadas = updateCompletoDto.requerimiento.versionesActualizadas;
+}
+
+// Si hay versionamiento en el nivel principal (objeto único), agregarlo
+if (updateCompletoDto.versionamiento) {
+  datosRequerimiento.versionamiento = updateCompletoDto.versionamiento;
+}
+
+// 4. ✅ ACTUALIZAR REQUERIMIENTO USANDO EL SERVICIO EXISTENTE
+if (updateCompletoDto.requerimiento || updateCompletoDto.versionamiento) {
+  console.log('🔄 Llamando a updateRequerimiento con:', JSON.stringify(datosRequerimiento, null, 2));
+  
+  await this.requerimientoService.updateRequerimiento(
+    sirecqExterno.requerimiento.id_requerimiento,
+    datosRequerimiento
+  );
+}
 
     // 5. Retornar SirecqExterno actualizado
     const sirecqExternoActualizado = await this.sirecqExternoRepository.findOne({

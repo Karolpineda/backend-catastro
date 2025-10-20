@@ -529,11 +529,14 @@ async updateRequerimiento(
       if (rolUsuario) requerimiento.rolUsuario = rolUsuario;
     }
 
-    // 4. 🆕 ACTUALIZAR VERSIONAMIENTO (MUY SIMPLE)
-    if (updateData.versionamiento) {
-      console.log('📦 Procesando versionamiento:', updateData.versionamiento);
-      await this.actualizarVersionamientoDirecto(requerimiento, updateData.versionamiento, queryRunner);
-    }
+// 4. 🆕 ACTUALIZAR VERSIONAMIENTO
+if (updateData.versionesActualizadas) {
+  console.log('📦 Procesando versionesActualizadas:', updateData.versionesActualizadas);
+  await this.actualizarVersionamientoDirecto(requerimiento, updateData.versionesActualizadas, queryRunner);
+} else if (updateData.versionamiento) {
+  console.log('📦 Procesando versionamiento único:', updateData.versionamiento);
+  await this.actualizarVersionamientoDirecto(requerimiento, updateData.versionamiento, queryRunner);
+}
 
     // 5. Guardar cambios
     requerimiento.updatedAt = new Date();
@@ -567,6 +570,7 @@ return requerimientoActualizado;
 }
 
 // 🆕 MÉTODO DIRECTO para versionamiento
+// 🆕 MÉTODO DIRECTO para versionamiento - REEMPLAZA EL MÉTODO COMPLETO
 private async actualizarVersionamientoDirecto(
   requerimiento: Requerimiento,
   versionData: any,
@@ -574,8 +578,43 @@ private async actualizarVersionamientoDirecto(
 ): Promise<void> {
   try {
     console.log('🎯 actualizarVersionamientoDirecto - INICIADO');
+    console.log('📦 Datos recibidos:', JSON.stringify(versionData, null, 2));
     
-    // Buscar la relación de versión existente
+    // 🆕 SI ES UN ARRAY (versionesActualizadas), procesar todas
+    if (Array.isArray(versionData)) {
+      console.log('📋 Procesando múltiples versiones...');
+      
+      for (const version of versionData) {
+        if (version.id_version) {
+          console.log(`🔄 Actualizando versión ID: ${version.id_version}`);
+          
+          // 🔥 CORRECCIÓN CRÍTICA: Agregar 'T00:00:00' a las fechas
+          await queryRunner.manager.update(
+            Versionamiento,
+            version.id_version,
+            {
+              ofi_desp_pt: version.ofi_desp_pt || null,
+              fech_desp_pt: version.fech_desp_pt 
+                ? new Date(version.fech_desp_pt + 'T00:00:00') 
+                : null,
+              oficioenviodmi: version.oficioenviodmi || null,
+              fechaenvioreq: version.fechaenvioreq 
+                ? new Date(version.fechaenvioreq + 'T00:00:00') 
+                : null,
+              obs_version: version.obs_version || null,
+              updatedAt: new Date()
+            }
+          );
+          
+          console.log(`✅ Versión ${version.id_version} actualizada correctamente`);
+        }
+      }
+      
+      console.log('🎉 Todas las versiones actualizadas exitosamente');
+      return;
+    }
+    
+    // 🔄 SI ES UN OBJETO (versión única), procesar como antes
     const relacionExistente = await this.requerimientoVersionRepository.findOne({
       where: { requerimiento: { id_requerimiento: requerimiento.id_requerimiento } },
       relations: ['versionamiento']
@@ -584,32 +623,40 @@ private async actualizarVersionamientoDirecto(
     if (relacionExistente && relacionExistente.versionamiento) {
       console.log('🔄 Actualizando versión existente ID:', relacionExistente.versionamiento.id_version);
       
-      // ACTUALIZAR usando update directo
-      const updateResult = await queryRunner.manager.update(
+      // 🔥 CORRECCIÓN: Agregar 'T00:00:00' a las fechas
+      await queryRunner.manager.update(
         Versionamiento,
         relacionExistente.versionamiento.id_version,
         {
           oficioenviodmi: versionData.oficioenviodmi || null,
-          fechaenvioreq: versionData.fechaenvioreq || null,
+          fechaenvioreq: versionData.fechaenvioreq 
+            ? new Date(versionData.fechaenvioreq + 'T00:00:00') 
+            : null,
           ofi_desp_pt: versionData.ofi_desp_pt || null,
-          fech_desp_pt: versionData.fech_desp_pt || null,
+          fech_desp_pt: versionData.fech_desp_pt 
+            ? new Date(versionData.fech_desp_pt + 'T00:00:00') 
+            : null,
           num_version: versionData.num_version || 1,
           obs_version: versionData.obs_version || null,
           updatedAt: new Date()
         }
       );
       
-      console.log('✅ Versión actualizada. Resultado:', updateResult.affected, 'registros afectados');
+      console.log('✅ Versión actualizada');
       
     } else {
       console.log('🆕 Creando NUEVA versión...');
       
-      // CREAR nueva versión
+      // 🔥 CORRECCIÓN: Agregar 'T00:00:00' a las fechas
       const nuevaVersion = await queryRunner.manager.save(Versionamiento, {
         oficioenviodmi: versionData.oficioenviodmi || null,
-        fechaenvioreq: versionData.fechaenvioreq ? new Date(versionData.fechaenvioreq) : null,
+        fechaenvioreq: versionData.fechaenvioreq 
+          ? new Date(versionData.fechaenvioreq + 'T00:00:00') 
+          : null,
         ofi_desp_pt: versionData.ofi_desp_pt || null,
-        fech_desp_pt: versionData.fech_desp_pt ? new Date(versionData.fech_desp_pt) : null,
+        fech_desp_pt: versionData.fech_desp_pt 
+          ? new Date(versionData.fech_desp_pt + 'T00:00:00') 
+          : null,
         num_version: versionData.num_version || 1,
         obs_version: versionData.obs_version || null,
         createdAt: new Date(),
@@ -618,7 +665,6 @@ private async actualizarVersionamientoDirecto(
 
       console.log('✅ Nueva versión creada ID:', nuevaVersion.id_version);
 
-      // Crear relación requerimiento-version
       await queryRunner.manager.save(RequerimientoVersion, {
         requerimiento: { id_requerimiento: requerimiento.id_requerimiento },
         versionamiento: { id_version: nuevaVersion.id_version },
