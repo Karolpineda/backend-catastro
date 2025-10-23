@@ -40,8 +40,22 @@ export class UsuarioService {
         return this.usuarioRepository.save(newUsuario);
     }
 
-    async getAllUsuario(){
-        return this.usuarioRepository.find();
+    async getAllUsuario() {
+        return this.usuarioRepository.createQueryBuilder('usuario')
+        .leftJoinAndSelect('usuario.roles_usuario', 'roles_usuario')
+        .leftJoinAndSelect('roles_usuario.rol', 'rol')
+        .select([
+            'usuario.id_usuario',
+            'usuario.cedula_usuario',
+            'usuario.apellidos_usuario',
+            'usuario.nombre_usuario',
+            'usuario.correo_usuario',
+            'roles_usuario.id_rol_usuario',
+            'rol.id_rol',
+            'rol.nombre_rol',
+            'rol.descrip_rol'
+        ])
+        .getMany();
     }
 
     async getCedulaUsuario(cedula_usuario:string){

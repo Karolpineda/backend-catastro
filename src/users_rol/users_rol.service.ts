@@ -176,6 +176,123 @@ export class UsersRolService {
     return rolesUsuario;
   }
 
+  async actualizarUsuarioConRoles(
+    id_usuario: number,
+    updateDto: {
+      cedula_usuario?: string;
+      apellidos_usuario?: string;
+      nombre_usuario?: string;
+      correo_usuario?: string;
+      contrasenia_usuario?: string;
+      roles_ids?: number[];
+    }
+  ) {
+    // Buscar usuario existente
+    const usuario = await this.usuarioRepository.findOne({
+      where: { id_usuario }
+    });
+
+    if (!usuario) {
+      throw new HttpException(
+        `Usuario con ID ${id_usuario} no encontrado`,
+        HttpStatus.NOT_FOUND
+      );
+    }
+
+    // Validar correo único si se está actualizando
+    if (updateDto.correo_usuario && updateDto.correo_usuario !== usuario.correo_usuario) {
+      const existeCorreo = await this.usuarioRepository.findOne({
+        where: { correo_usuario: updateDto.correo_usuario }
+      });
+      if (existeCorreo) {
+        throw new HttpException(
+          'El correo electrónico ya está registrado',
+          HttpStatus.CONFLICT
+        );
+      }
+    }
+
+    // Validar cédula única si se está actualizando
+    if (updateDto.cedula_usuario && updateDto.cedula_usuario !== usuario.cedula_usuario) {
+      const existeCedula = await this.usuarioRepository.findOne({
+        where: { cedula_usuario: updateDto.cedula_usuario }
+      });
+      if (existeCedula) {
+        throw new HttpException(
+          'La cédula ya está registrada',
+          HttpStatus.CONFLICT
+        );
+      }
+    }
+
+    // Actualizar datos básicos del usuario
+    if (updateDto.cedula_usuario) usuario.cedula_usuario = updateDto.cedula_usuario;
+    if (updateDto.apellidos_usuario) usuario.apellidos_usuario = updateDto.apellidos_usuario;
+    if (updateDto.nombre_usuario) usuario.nombre_usuario = updateDto.nombre_usuario;
+    if (updateDto.correo_usuario) usuario.correo_usuario = updateDto.correo_usuario;
+    
+    // Actualizar contraseña si se proporciona
+    if (updateDto.contrasenia_usuario) {
+      const salt = await bcrypt.genSalt(10);
+      usuario.contrasenia_usuario = await bcrypt.hash(updateDto.contrasenia_usuario, salt);
+    }
+
+    // Si se proporcionan roles, actualizar roles
+    if (updateDto.roles_ids && updateDto.roles_ids.length > 0) {
+      // Verificar que todos los roles existan
+      const roles = await this.rolRepository.findByIds(updateDto.roles_ids);
+      if (roles.length !== updateDto.roles_ids.length) {
+        throw new HttpException(
+          'Uno o más roles no existen',
+          HttpStatus.NOT_FOUND
+        );
+      }
+
+      // Eliminar roles anteriores
+      await this.userRolRepository.delete({ usuario: { id_usuario } });
+
+      // Crear nuevas relaciones de roles
+      const rolesUsuario: Rol_Usuario[] = [];
+      for (const rol of roles) {
+        const rolUsuario = this.userRolRepository.create({
+          usuario: usuario,
+          rol: rol,
+        });
+        const rolGuardado = await this.userRolRepository.save(rolUsuario);
+        rolesUsuario.push(rolGuardado);
+      }
+    }
+
+    // Guardar cambios del usuario
+    await this.usuarioRepository.save(usuario);
+
+    // Retornar usuario actualizado con sus roles
+    const usuarioActualizado = await this.usuarioRepository.findOne({
+      where: { id_usuario },
+      relations: ['roles_usuario', 'roles_usuario.rol']
+    });
+
+    return {
+      usuario: {
+        id_usuario: usuarioActualizado?.id_usuario,
+        cedula_usuario: usuarioActualizado?.cedula_usuario,
+        apellidos_usuario: usuarioActualizado?.apellidos_usuario,
+        nombre_usuario: usuarioActualizado?.nombre_usuario,
+        correo_usuario: usuarioActualizado?.correo_usuario,
+      },
+      roles: usuarioActualizado?.roles_usuario.map(ru => ({
+        id_rol_usuario: ru.id_rol_usuario,
+        rol: {
+          id_rol: ru.rol.id_rol,
+          nombre_rol: ru.rol.nombre_rol,
+          descrip_rol: ru.rol.descrip_rol,
+        }
+      }))
+    };
+  }
+
+// ...existing code...
+
   /**
    * Elimina un rol de un usuario
    */
@@ -238,6 +355,8 @@ export class UsersRolService {
       .where('usuario.id_usuario = :userId', { userId: parsedUserId })
       .getMany();
   }
+
+  
 
   async findByRol(rolId: number) {
     // Validar que el ID sea un número válido

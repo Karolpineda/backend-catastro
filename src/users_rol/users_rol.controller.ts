@@ -1,4 +1,4 @@
-import { Controller,Get,Post,Body,Param,Delete,UseGuards, ParseIntPipe} from '@nestjs/common';
+import { Controller,Get,Post,Body,Param,Delete,UseGuards, ParseIntPipe, Patch} from '@nestjs/common';
 import { UsersRolService } from './users_rol.service';
 import { CreateUsersRolDto } from './dto/create-users_rol.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -20,6 +20,21 @@ export class UsersRolController {
     roles_ids: number[];
   }) {
     return await this.usersRolService.crearUsuarioConRol(createDto);
+  }
+
+    @Patch('update/:id_usuario')
+  async actualizarUsuarioConRoles(
+    @Param('id_usuario', ParseIntPipe) id_usuario: number,
+    @Body() updateDto: {
+      cedula_usuario?: string;
+      apellidos_usuario?: string;
+      nombre_usuario?: string;
+      correo_usuario?: string;
+      contrasenia_usuario?: string;
+      roles_ids?: number[];
+    }
+  ) {
+    return await this.usersRolService.actualizarUsuarioConRoles(id_usuario, updateDto);
   }
 
   @Post('asignar-rol/:id_usuario/:id_rol')
