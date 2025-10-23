@@ -10,14 +10,37 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 export class UsersRolController {
   constructor(private readonly usersRolService: UsersRolService) {}
 
-  @Post()
-  create(@Body() createUsersRolDto: CreateUsersRolDto) {
-    return this.usersRolService.create(createUsersRolDto);
+  @Post('create')
+  async crearUsuarioConRol(@Body() createDto: {
+    cedula_usuario?: string;
+    apellidos_usuario?: string;
+    nombre_usuario?: string;
+    correo_usuario?: string;
+    contrasenia_usuario: string;
+    roles_ids: number[];
+  }) {
+    return await this.usersRolService.crearUsuarioConRol(createDto);
   }
 
-  @Get()
-  findAll() {
-    return this.usersRolService.findAll();
+  @Post('asignar-rol/:id_usuario/:id_rol')
+  async asignarRol(
+    @Param('id_usuario', ParseIntPipe) id_usuario: number,
+    @Param('id_rol', ParseIntPipe) id_rol: number
+  ) {
+    return await this.usersRolService.asignarRolAUsuario(id_usuario, id_rol);
+  }
+
+  @Get('roles-usuario/:id_usuario')
+  async obtenerRoles(@Param('id_usuario', ParseIntPipe) id_usuario: number) {
+    return await this.usersRolService.obtenerRolesDeUsuario(id_usuario);
+  }
+
+  @Delete('remover-rol/:id_usuario/:id_rol')
+  async removerRol(
+    @Param('id_usuario', ParseIntPipe) id_usuario: number,
+    @Param('id_rol', ParseIntPipe) id_rol: number
+  ) {
+    return await this.usersRolService.removerRolDeUsuario(id_usuario, id_rol);
   }
 
   // ✅ RUTAS ESPECÍFICAS PRIMERO - antes que @Get(':id')
@@ -28,7 +51,7 @@ export class UsersRolController {
   }
 
   @Get('analistas')
-  @Roles('Administrador')
+  //@Roles('Administrador')
   async getAnalistas() {
     return await this.usersRolService.getAnalistasIncidentes();
   }
@@ -44,12 +67,7 @@ export class UsersRolController {
   async getAnalistasAccidentes() {
     return await this.usersRolService.getAnalistasAccidentes();
   }
-  // PENDIENTE POR SABER REQUERIMIENTO SIRECQ_EXTERNO
-  // @Get('tecnicoReque')
-  // async getTecnicoReque() {
-  //   return await this.usersRolService.getTecnicoReque();
-  // }
-
+  
   // ✅ Rutas con parámetros en el medio de la URL
   @Get('usuario/:userId')
 
@@ -69,8 +87,5 @@ export class UsersRolController {
     return this.usersRolService.findOne(id);
   }
 
-  @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.usersRolService.remove(id);
-  }
+  
 }

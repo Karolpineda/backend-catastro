@@ -6,7 +6,7 @@ import { UpdateUsersRolDto } from './dto/update-users_rol.dto';
 import { Rol_Usuario } from './entities/users_rol.entity';
 import { Usuario } from '../usuario/usuario.entity';
 import { Rol } from '../rol/rol.entity';
-import { Equal } from 'typeorm';
+import * as bcrypt from 'bcryptjs';
 
 @Injectable()
 export class UsersRolService {
@@ -29,55 +29,173 @@ export class UsersRolService {
     });
   }
 
-  async create(createUsersRolDto: CreateUsersRolDto) {
-    // Verificar si el usuario existe
+    async crearUsuarioConRol(createDto: {
+    cedula_usuario?: string;
+    apellidos_usuario?: string;
+    nombre_usuario?: string;
+    correo_usuario?: string;
+    contrasenia_usuario: string;
+    roles_ids: number[]; // Array de IDs de roles a asignar
+  }) {
+    // Validar que se envíen roles
+    if (!createDto.roles_ids || createDto.roles_ids.length === 0) {
+      throw new HttpException('Debe asignar al menos un rol al usuario', HttpStatus.BAD_REQUEST);
+    }
+
+    // Verificar si el correo ya existe
+    if (createDto.correo_usuario) {
+      const usuarioExistente = await this.usuarioRepository.findOne({
+        where: { correo_usuario: createDto.correo_usuario }
+      });
+
+      if (usuarioExistente) {
+        throw new HttpException('El correo electrónico ya está registrado', HttpStatus.CONFLICT);
+      }
+    }
+
+    // Verificar si la cédula ya existe
+    if (createDto.cedula_usuario) {
+      const cedulaExistente = await this.usuarioRepository.findOne({
+        where: { cedula_usuario: createDto.cedula_usuario }
+      });
+
+      if (cedulaExistente) {
+        throw new HttpException('La cédula ya está registrada', HttpStatus.CONFLICT);
+      }
+    }
+
+    // Verificar que todos los roles existan
+    const roles = await this.rolRepository.findByIds(createDto.roles_ids);
+    
+    if (roles.length !== createDto.roles_ids.length) {
+      throw new HttpException('Uno o más roles no existen', HttpStatus.NOT_FOUND);
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(createDto.contrasenia_usuario, salt);
+
+    // Crear el usuario
+    const nuevoUsuario = this.usuarioRepository.create({
+      cedula_usuario: createDto.cedula_usuario,
+      apellidos_usuario: createDto.apellidos_usuario,
+      nombre_usuario: createDto.nombre_usuario,
+      correo_usuario: createDto.correo_usuario,
+      contrasenia_usuario: hashedPassword,
+    });
+
+    const usuarioGuardado = await this.usuarioRepository.save(nuevoUsuario);
+
+    // Asignar los roles al usuario
+    // Declarar el tipo explícitamente
+    const rolesUsuario: Rol_Usuario[] = [];
+    for (const rol of roles) {
+      const rolUsuario = this.userRolRepository.create({
+        usuario: usuarioGuardado,
+        rol: rol,
+      });
+      const rolGuardado = await this.userRolRepository.save(rolUsuario);
+      rolesUsuario.push(rolGuardado);
+    }
+
+    // Retornar el usuario con sus roles
+    return {
+      usuario: {
+        id_usuario: usuarioGuardado.id_usuario,
+        cedula_usuario: usuarioGuardado.cedula_usuario,
+        apellidos_usuario: usuarioGuardado.apellidos_usuario,
+        nombre_usuario: usuarioGuardado.nombre_usuario,
+        correo_usuario: usuarioGuardado.correo_usuario,
+      },
+      roles: rolesUsuario.map(ru => ({
+        id_rol_usuario: ru.id_rol_usuario,
+        rol: {
+          id_rol: ru.rol.id_rol,
+          nombre_rol: ru.rol.nombre_rol,
+          descrip_rol: ru.rol.descrip_rol,
+        }
+      }))
+    };
+  }
+
+  /**
+   * Asigna un rol adicional a un usuario existente
+   */
+  async asignarRolAUsuario(id_usuario: number, id_rol: number) {
+    // Verificar que el usuario existe
     const usuario = await this.usuarioRepository.findOne({
-      where: { id_usuario: Equal(createUsersRolDto.id_usuario) },
+      where: { id_usuario }
     });
 
     if (!usuario) {
-      throw new HttpException('Usuario no encontrado', HttpStatus.NOT_FOUND);
+      throw new HttpException(`Usuario con ID ${id_usuario} no encontrado`, HttpStatus.NOT_FOUND);
     }
 
-    // Verificar si el rol existe
+    // Verificar que el rol existe
     const rol = await this.rolRepository.findOne({
-      where: { id_rol: Equal(createUsersRolDto.id_rol) },
+      where: { id_rol }
     });
 
     if (!rol) {
-      throw new HttpException('Rol no encontrado', HttpStatus.NOT_FOUND);
+      throw new HttpException(`Rol con ID ${id_rol} no encontrado`, HttpStatus.NOT_FOUND);
     }
 
-    // Verificar si ya existe la asignación
-    const existingUserRol = await this.userRolRepository
-      .createQueryBuilder('userRol')
-      .innerJoinAndSelect('userRol.usuario', 'usuario')
-      .innerJoinAndSelect('userRol.rol', 'rol')
-      .where('usuario.id_usuario = :userId', { userId: createUsersRolDto.id_usuario })
-      .andWhere('rol.id_rol = :rolId', { rolId: createUsersRolDto.id_rol })
-      .getOne();
+    // Verificar si ya tiene ese rol asignado
+    const rolExistente = await this.userRolRepository.findOne({
+      where: {
+        usuario: { id_usuario },
+        rol: { id_rol }
+      }
+    });
 
-    if (existingUserRol) {
-      throw new HttpException(
-        'El usuario ya tiene asignado este rol',
-        HttpStatus.CONFLICT,
-      );
+    if (rolExistente) {
+      throw new HttpException('El usuario ya tiene ese rol asignado', HttpStatus.CONFLICT);
     }
 
-    // Crear la nueva asignación
-    const newUserRol = this.userRolRepository.create({
-      usuario: usuario,
-      rol: rol,
+    // Crear la relación
+    const rolUsuario = this.userRolRepository.create({
+      usuario,
+      rol,
     });
 
-    return await this.userRolRepository.save(newUserRol);
+    return await this.userRolRepository.save(rolUsuario);
   }
 
-  async findAll() {
-    return await this.userRolRepository.find({
-      relations: ['usuario', 'rol'],
+  /**
+   * Obtiene todos los roles de un usuario
+   */
+  async obtenerRolesDeUsuario(id_usuario: number) {
+    const rolesUsuario = await this.userRolRepository.find({
+      where: { usuario: { id_usuario } },
+      relations: ['rol', 'usuario']
     });
+
+    if (!rolesUsuario || rolesUsuario.length === 0) {
+      throw new HttpException(`No se encontraron roles para el usuario con ID ${id_usuario}`,HttpStatus.NOT_FOUND);
+    }
+
+    return rolesUsuario;
   }
+
+  /**
+   * Elimina un rol de un usuario
+   */
+  async removerRolDeUsuario(id_usuario: number, id_rol: number) {
+    const rolUsuario = await this.userRolRepository.findOne({
+      where: {
+        usuario: { id_usuario },
+        rol: { id_rol }
+      }
+    });
+
+    if (!rolUsuario) {
+      throw new HttpException('Relación usuario-rol no encontrada', HttpStatus.NOT_FOUND);
+    }
+
+    await this.userRolRepository.remove(rolUsuario);
+
+    return { mensaje: 'Rol removido exitosamente del usuario' };
+  }
+
 
   async findOne(id: number | string) {
     // Debug: log para ver qué está llegando
