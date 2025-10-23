@@ -1,9 +1,9 @@
-import { IsUUID } from 'class-validator';
+import { IsNumber } from 'class-validator';
 
 export class CreateUsersRolDto {
-  @IsUUID()
+  @IsNumber()
   id_usuario: number;
 
-  @IsUUID()
+  @IsNumber()
   id_rol: number;
 }
