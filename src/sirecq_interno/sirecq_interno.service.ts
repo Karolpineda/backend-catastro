@@ -325,69 +325,76 @@ export class SirecqInternoService {
       }
     }
 
-    async findAll(query: any): Promise<any> {
-      try {
-        const {
-          page = 1,
-          pageSize = 10,
-          search = "",
-          status = "",
-        } = query;
+   async findAll(query: any): Promise<any> {
+  try {
+    const {
+      page = 1,
+      pageSize = 10,
+      search = "",
+      status = "",
+      categoria = "", // Este será el id_categoria
+    } = query;
 
-        const qb = this.sirecqInternoRepository
-          .createQueryBuilder("sirecq")
-          .leftJoinAndSelect("sirecq.sirecqExterno", "sirecqExterno")
-          .leftJoinAndSelect("sirecqExterno.requerimiento", "requerimiento")
-          .leftJoinAndSelect("requerimiento.estadoRequerimiento", "estadoRequerimiento")
-          .leftJoinAndSelect("requerimiento.categoria", "categoria")
-          .leftJoinAndSelect("requerimiento.sistema", "sistema")
-          .leftJoinAndSelect("requerimiento.rolUsuario", "rolUsuario")
-          .leftJoinAndSelect("rolUsuario.usuario", "usuarioRol")
-          .leftJoinAndSelect("requerimiento.requerimientoVersiones", "requerimientoVersiones")
-          .leftJoinAndSelect("requerimientoVersiones.versionamiento", "versionamiento")
-          .leftJoinAndSelect("sirecqExterno.dependencia", "dependencia")
-          .leftJoinAndSelect("sirecq.clasifCatastral", "clasifCatastral")
-          .leftJoinAndSelect("sirecq.usuariosSirecq", "usuariosSirecq")
-          .leftJoinAndSelect("usuariosSirecq.rolUsuario", "rolUsuarioUsuario")
-          .leftJoinAndSelect("rolUsuarioUsuario.usuario", "usuarioSirecq")
-          .leftJoinAndSelect("rolUsuarioUsuario.rol", "rolUsuarioRol")
-          .orderBy("sirecq.id_sirecq_interno", "DESC");
+    const qb = this.sirecqInternoRepository
+      .createQueryBuilder("sirecq")
+      .leftJoinAndSelect("sirecq.sirecqExterno", "sirecqExterno")
+      .leftJoinAndSelect("sirecqExterno.requerimiento", "requerimiento")
+      .leftJoinAndSelect("requerimiento.estadoRequerimiento", "estadoRequerimiento")
+      .leftJoinAndSelect("requerimiento.categoria", "categoria")
+      .leftJoinAndSelect("requerimiento.sistema", "sistema")
+      .leftJoinAndSelect("requerimiento.rolUsuario", "rolUsuario")
+      .leftJoinAndSelect("rolUsuario.usuario", "usuarioRol")
+      .leftJoinAndSelect("requerimiento.requerimientoVersiones", "requerimientoVersiones")
+      .leftJoinAndSelect("requerimientoVersiones.versionamiento", "versionamiento")
+      .leftJoinAndSelect("sirecqExterno.dependencia", "dependencia")
+      .leftJoinAndSelect("sirecq.clasifCatastral", "clasifCatastral")
+      .leftJoinAndSelect("sirecq.usuariosSirecq", "usuariosSirecq")
+      .leftJoinAndSelect("usuariosSirecq.rolUsuario", "rolUsuarioUsuario")
+      .leftJoinAndSelect("rolUsuarioUsuario.usuario", "usuarioSirecq")
+      .leftJoinAndSelect("rolUsuarioUsuario.rol", "rolUsuarioRol")
+      .orderBy("sirecq.id_sirecq_interno", "DESC");
 
-        // 🔍 Filtro de búsqueda (por número de requerimiento)
-        if (search) {
-          qb.andWhere(
-            "LOWER(requerimiento.no_requerimiento) LIKE LOWER(:search)",
-            { search: `%${search}%` }
-          );
-        }
-
-        // ✅ Filtro por estado (coincidencia exacta, ignorando mayúsculas)
-        if (status && status.toUpperCase() !== "TODOS") {
-          qb.andWhere(
-            "UPPER(estadoRequerimiento.nombre_estado_requerimiento) = :status",
-            { status: status.toUpperCase() }
-          );
-        }
-
-        // 🔹 Paginación
-        qb.skip((page - 1) * pageSize).take(pageSize);
-
-        const [items, total] = await qb.getManyAndCount();
-
-        return {
-          items,
-          total,
-          page: Number(page),
-          totalPages: Math.ceil(total / pageSize),
-        };
-      } catch (error) {
-        throw new HttpException(
-          `Error al obtener SirecqInternos: ${error.message}`,
-          HttpStatus.INTERNAL_SERVER_ERROR
-        );
-      }
+    // 🔍 Filtrar por ID_CATEGORÍA (1=RSW, 2=RD, 3=RPM)
+    if (categoria && categoria !== "TODOS" && categoria !== "") {
+      qb.andWhere("categoria.id_categoria = :categoria", { 
+        categoria: Number(categoria) 
+      });
     }
 
+    // 🔍 Búsqueda general por número de requerimiento
+    if (search) {
+      qb.andWhere(
+        "(LOWER(requerimiento.no_requerimiento) LIKE LOWER(:search))",
+        { search: `%${search}%` }
+      );
+    }
+
+    // ✅ Filtro por estado
+    if (status && status.toUpperCase() !== "TODOS") {
+      qb.andWhere(
+        "UPPER(estadoRequerimiento.nombre_estado_requerimiento) = :status",
+        { status: status.toUpperCase() }
+      );
+    }
+
+    // 🔹 Paginación
+    qb.skip((page - 1) * pageSize).take(pageSize);
+
+    const [items, total] = await qb.getManyAndCount();
+
+    return {
+      items,
+      total,
+      page: Number(page),
+      totalPages: Math.ceil(total / pageSize),
+    };
+  } catch (error) {
+    throw new HttpException(
+      `Error al obtener SirecqInternos: ${error.message}`,
+      HttpStatus.INTERNAL_SERVER_ERROR
+    );
+  }
+}
 
     async findOne(id_sirecq_interno: number): Promise<SirecqInterno> {
       try {

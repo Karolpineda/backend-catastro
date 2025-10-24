@@ -44,13 +44,13 @@ export class SirecqInternoController {
   }
 
   // ✅ GET ALL - Obtener todos los SirecqInterno
- // ✅ GET ALL - Obtener todos los SirecqInterno con filtros dinámicos
 @Get()
 async findAll(
   @Query('page') page: number = 1,
   @Query('pageSize') pageSize: number = 10,
   @Query('search') search: string = "",
-  @Query('status') status: string = ""
+  @Query('status') status: string = "",
+  @Query('categoria') categoria: string = "" // Este será el ID de categoría (1, 2, 3)
 ): Promise<{ 
   success: boolean; 
   message: string; 
@@ -62,6 +62,7 @@ async findAll(
       pageSize,
       search,
       status,
+      categoria,
     });
 
     return {
