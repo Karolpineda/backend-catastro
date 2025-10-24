@@ -33,6 +33,10 @@ export class CreateRequerimientoDto {
   @IsString()
   descripcion: string;
 
+  @IsOptional()  
+  @IsString()
+  origen?: string;
+
   @IsString()
   fase: string;
 

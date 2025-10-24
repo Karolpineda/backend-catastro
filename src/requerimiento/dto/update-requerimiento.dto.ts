@@ -54,6 +54,9 @@ export class UpdateRequerimientoDto {
   @IsString()
   documento?: string;
 
+  @IsString()
+  origen: string;
+
   @IsOptional()
   @IsString()
   tema?: string;

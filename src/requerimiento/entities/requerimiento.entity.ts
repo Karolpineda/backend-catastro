@@ -26,6 +26,9 @@ export class Requerimiento {
   @Column({ type: 'text', name: 'descripcion' })
   descripcion: string;
 
+  @Column({ type: 'varchar', name: 'origen' })
+  origen: string;
+
   @Column({ type: 'varchar', length: 100, name: 'fase', nullable: true })
   fase: string;
 

@@ -108,6 +108,7 @@ export class SirecqExternoService {
           tema: createSirecqExternoDto.requerimiento.tema,
           descripcion: createSirecqExternoDto.requerimiento.descripcion,
           fase: createSirecqExternoDto.requerimiento.fase,
+          origen: 'externo', // Valor fijo para SirecqExterno
           fecha_registro: new Date(),
           estadoRequerimiento: estado,
           categoria: categoria,
@@ -221,7 +222,7 @@ export class SirecqExternoService {
       .leftJoinAndSelect('requerimiento.requerimientoVersiones', 'requerimientoVersiones')
       .leftJoinAndSelect('requerimientoVersiones.versionamiento', 'versionamiento')
       .leftJoinAndSelect('sirecqExterno.dependencia', 'dependencia')
-      .leftJoinAndSelect('sirecqExterno.sirecqInterno', 'sirecqInterno')
+      .where('requerimiento.origen = :origen', { origen: 'externo' }) 
       .orderBy('sirecqExterno.createdAt', 'DESC') // ✅ usa alias explícito
       .getMany();
 
