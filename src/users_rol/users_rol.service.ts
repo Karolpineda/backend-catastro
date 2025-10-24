@@ -313,6 +313,24 @@ export class UsersRolService {
     return { mensaje: 'Rol removido exitosamente del usuario' };
   }
 
+async removerRolesDeUsuario(id_usuario: number, roles: number[]) {
+  const rolesUsuario = await this.userRolRepository.find({
+    where: roles.map(id_rol => ({
+      usuario: { id_usuario },
+      rol: { id_rol }
+    })),
+    relations: ['usuario', 'rol']
+  });
+
+  if (!rolesUsuario || rolesUsuario.length === 0) {
+    throw new HttpException('No se encontraron relaciones usuario-rol para eliminar', HttpStatus.NOT_FOUND);
+  }
+
+  await this.userRolRepository.remove(rolesUsuario);
+
+  return { mensaje: `Se removieron ${rolesUsuario.length} roles del usuario ${id_usuario} exitosamente` };
+}
+
 
   async findOne(id: number | string) {
     // Debug: log para ver qué está llegando

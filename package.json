@@ -2,7 +2,9 @@
   "name": "backend-catastro",
   "version": "0.0.1",
   "description": "",
-  "author": "",
+  "authors": [
+  { "name": "Jimmy Maila" },
+  { "name": "Karol Pineda" }],
   "private": true,
   "license": "UNLICENSED",
   "scripts": {

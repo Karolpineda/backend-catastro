@@ -1,4 +1,4 @@
-import { Controller,Get,Post,Body,Param,Delete,UseGuards, ParseIntPipe, Patch} from '@nestjs/common';
+import { Controller,Get,Post,Body,Param,Delete,UseGuards, ParseIntPipe, Patch, HttpException, HttpStatus} from '@nestjs/common';
 import { UsersRolService } from './users_rol.service';
 import { CreateUsersRolDto } from './dto/create-users_rol.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -56,6 +56,17 @@ export class UsersRolController {
     @Param('id_rol', ParseIntPipe) id_rol: number
   ) {
     return await this.usersRolService.removerRolDeUsuario(id_usuario, id_rol);
+  }
+
+    @Delete('remover-roles/:id_usuario')
+  async removerRoles(
+    @Param('id_usuario', ParseIntPipe) id_usuario: number,
+    @Body('roles') roles: number[]
+  ) {
+    if (!roles || roles.length === 0) {
+      throw new HttpException('Debe enviar al menos un id de rol', HttpStatus.BAD_REQUEST);
+    }
+    return await this.usersRolService.removerRolesDeUsuario(id_usuario, roles);
   }
 
   // ✅ RUTAS ESPECÍFICAS PRIMERO - antes que @Get(':id')

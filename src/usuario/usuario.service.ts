@@ -93,11 +93,29 @@ export class UsuarioService {
     }
 
     async getUsuarioById(id_usuario: number) {
-        const usuarioFound = await this.usuarioRepository.findOne({ where: { id_usuario } });
-        if (!usuarioFound) {
-            return new HttpException('Usuario no encontrado', HttpStatus.NOT_FOUND);
-        } else {
-            return usuarioFound;
-        }
+    const usuario = await this.usuarioRepository
+        .createQueryBuilder('usuario')
+        .leftJoinAndSelect('usuario.roles_usuario', 'roles_usuario')
+        .leftJoinAndSelect('roles_usuario.rol', 'rol')
+        .select([
+        'usuario.id_usuario',
+        'usuario.cedula_usuario',
+        'usuario.apellidos_usuario',
+        'usuario.nombre_usuario',
+        'usuario.correo_usuario',
+        'roles_usuario.id_rol_usuario',
+        'rol.id_rol',
+        'rol.nombre_rol',
+        'rol.descrip_rol',
+        ])
+        .where('usuario.id_usuario = :id_usuario', { id_usuario })
+        .getOne();
+
+    if (!usuario) {
+        throw new HttpException('Usuario no encontrado', HttpStatus.NOT_FOUND);
     }
+
+    return usuario;
+    }
+
 }
