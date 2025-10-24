@@ -163,6 +163,7 @@ export class SirecqInternoService {
           no_requerimiento: createSirecqInternoDto.requerimiento.no_requerimiento.trim().toUpperCase(),
           tema: createSirecqInternoDto.requerimiento.tema,
           descripcion: createSirecqInternoDto.requerimiento.descripcion,
+          origen: 'interno',
           fase: createSirecqInternoDto.requerimiento.fase,
           fecha_registro: fixDateToNoTimezone(createSirecqInternoDto.requerimiento.fecha_registro) || new Date(),
           estadoRequerimiento: estadoRequerimiento,
