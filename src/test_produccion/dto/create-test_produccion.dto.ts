@@ -24,4 +24,8 @@ export class CreateTestProduccionDto {
   @IsOptional()
   @MaxLength(50)
   no_requerimiento?: string;
+
+  @IsOptional()
+  @IsString()
+  ofi_env_pt?: string;
 }

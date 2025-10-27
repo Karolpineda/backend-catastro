@@ -22,6 +22,9 @@ export class TestProduccion {
     @Column({ type: 'varchar', length: 50, nullable: true})
     no_requerimiento: string;
 
+    @Column({type: 'varchar', nullable: true})
+    ofi_env_pt:string | null
+
     @CreateDateColumn()
     createdAt: Date;
   

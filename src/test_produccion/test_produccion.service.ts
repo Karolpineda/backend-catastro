@@ -297,6 +297,9 @@ export class TestProduccionService {
     if (updateTestProduccionDto.no_requerimiento !== undefined) {
       testProduccion.no_requerimiento = updateTestProduccionDto.no_requerimiento;
     }
+    if (updateTestProduccionDto.ofi_env_pt !== undefined) {
+      testProduccion.ofi_env_pt = updateTestProduccionDto.ofi_env_pt;
+    }
 
 
     // 3. ACTUALIZAR ROL USUARIO SI VIENE EN DTO
@@ -318,7 +321,6 @@ export class TestProduccionService {
       }
     }
 
-    // 4. CREAR NUEVA VERSIÓN SI VIENE EN EL DTO
     // 4. CREAR NUEVA VERSIÓN SI VIENE EN EL DTO
 if (updateTestProduccionDto.versionamiento) {
   console.log('🆕 Creando nueva versión durante actualización...');
