@@ -25,6 +25,9 @@ export class TestProduccion {
     @Column({type: 'varchar', nullable: true})
     ofi_env_pt:string | null
 
+    @Column({ type: 'date', nullable: true })
+    fech_env_pt: Date | null;
+
     @CreateDateColumn()
     createdAt: Date;
   

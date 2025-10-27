@@ -28,4 +28,8 @@ export class CreateTestProduccionDto {
   @IsOptional()
   @IsString()
   ofi_env_pt?: string;
+
+  @IsOptional()
+  @IsDateString()
+  fech_env_pt?: Date;
 }

@@ -300,6 +300,9 @@ export class TestProduccionService {
     if (updateTestProduccionDto.ofi_env_pt !== undefined) {
       testProduccion.ofi_env_pt = updateTestProduccionDto.ofi_env_pt;
     }
+    if (updateTestProduccionDto.fech_env_pt !== undefined) {
+      testProduccion.fech_env_pt = updateTestProduccionDto.fech_env_pt;
+    }
 
 
     // 3. ACTUALIZAR ROL USUARIO SI VIENE EN DTO
