@@ -73,6 +73,10 @@ export class UpdateTestProduccionDto extends PartialType(CreateTestProduccionDto
   no_requerimiento?: string;
 
   @IsOptional()
+  @IsString()
+  ofi_env_pt?: string;
+
+  @IsOptional()
   @ValidateNested()
   @Type(() => NuevaVersionDto)
   versionamiento?: NuevaVersionDto;
