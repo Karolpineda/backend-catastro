@@ -233,21 +233,24 @@ export class UsersRolService {
     }
 
     // 🔗 Actualizar roles solo si se envían explícitamente
-    if (Array.isArray(updateDto.roles_ids)) {
-      const roles = await queryRunner.manager.findByIds(this.rolRepository.target, updateDto.roles_ids);
-      if (roles.length !== updateDto.roles_ids.length) {
-        throw new HttpException('Uno o más roles no existen', HttpStatus.NOT_FOUND);
-      }
+    // ⚠️ No eliminamos los roles, solo actualizamos los existentes o añadimos nuevos
+      if (Array.isArray(updateDto.roles_ids) && updateDto.roles_ids.length > 0) {
+        const roles = await queryRunner.manager.findByIds(this.rolRepository.target, updateDto.roles_ids);
+        if (roles.length !== updateDto.roles_ids.length) {
+          throw new HttpException('Uno o más roles no existen', HttpStatus.NOT_FOUND);
+        }
 
-      // Primero elimina roles viejos
-      await queryRunner.manager.delete(this.userRolRepository.target, { usuario: { id_usuario } });
+        const rolesActuales = await this.userRolRepository.find({ where: { usuario: { id_usuario } } });
+        const idsActuales = rolesActuales.map(r => r.rol.id_rol);
 
-      // Luego inserta nuevos
-      for (const rol of roles) {
-        const rel = this.userRolRepository.create({ usuario, rol });
-        await queryRunner.manager.save(this.userRolRepository.target, rel);
-      }
-    }
+        for (const rol of roles) {
+          if (!idsActuales.includes(rol.id_rol)) {
+            const nuevo = this.userRolRepository.create({ usuario, rol });
+            await queryRunner.manager.save(this.userRolRepository.target, nuevo);
+          }
+        }
+}
+
 
     // 💾 Guardar usuario actualizado
     await queryRunner.manager.save(this.usuarioRepository.target, usuario);
