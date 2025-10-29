@@ -561,10 +561,8 @@ async updateSirecqInterno(
 
     // 2. ACTUALIZAR CAMPOS DIRECTOS DE SIREQ INTERNO
     if (updateSirecqInternoDto.fecha_env_dmc !== undefined) {
-      sirecqInterno.fecha_env_dmc = updateSirecqInternoDto.fecha_env_dmc
-        ? new Date(updateSirecqInternoDto.fecha_env_dmc)
-        : null;
-    }
+  sirecqInterno.fecha_env_dmc = this.fixDateToNoTimezone(updateSirecqInternoDto.fecha_env_dmc);
+}
 
     if (updateSirecqInternoDto.obsv_tecnica !== undefined) {
       sirecqInterno.obsv_tecnica = updateSirecqInternoDto.obsv_tecnica;
@@ -804,7 +802,23 @@ if (updateSirecqInternoDto.versionamiento) {
   }
 }
 
-
+private fixDateToNoTimezone(dateInput: string | Date | undefined | null): Date | null {
+  if (!dateInput) return null;
+  
+  // Si es Date, convertir a string YYYY-MM-DD
+  let dateStr: string;
+  if (dateInput instanceof Date) {
+    dateStr = dateInput.toISOString().split('T')[0];
+  } else {
+    dateStr = dateInput.split('T')[0]; // Por si viene "2025-10-28T00:00:00.000Z"
+  }
+  
+  // Parsear manualmente año, mes, día
+  const [year, month, day] = dateStr.split('-').map(Number);
+  
+  // Crear Date en zona horaria local (Ecuador)
+  return new Date(year, month - 1, day);
+}
 
 // 🛠️ MÉTODO AUXILIAR PARA ACTUALIZAR SIREQ EXTERNO (CORREGIDO)
 private async actualizarSirecqExterno(
