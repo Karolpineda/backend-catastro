@@ -302,32 +302,68 @@ export class IncidenteService {
   /** =========================
    *  List / Get
    *  ========================= */
-  async findAllIncidente(): Promise<any[]> {
-    try {
-      const incidentes = await this.incidenteRepository.find({
-        select: ['id_incidente','no_incidente','fechaingresoerror','descripcionerror','aniosirecq','tipologia','createdAt'],
-        relations: ['zona', 'estado_acc_inc'],
-        order: { createdAt: 'DESC' },
-      });
+async findAllIncidente(): Promise<any[]> {
+  try {
+    const incidentes = await this.incidenteRepository.find({
+      relations: [
+        'zona',
+        'estado_acc_inc',
+        'usuariosIncidente',
+        'usuariosIncidente.rolUsuario',
+        'usuariosIncidente.rolUsuario.usuario',
+        'usuariosIncidente.rolUsuario.rol',
+      ],
+      order: { createdAt: 'DESC' },
+    });
 
-      return incidentes.map(i => ({
+    return incidentes.map((i) => {
+      // Buscar técnico y analista
+      const tecnico = i.usuariosIncidente?.find(
+        (u) => u.rolUsuario?.rol?.id_rol === 7
+      );
+      const analista = i.usuariosIncidente?.find(
+        (u) => u.rolUsuario?.rol?.id_rol === 2
+      );
+
+      return {
         id_incidente: i.id_incidente,
         no_incidente: i.no_incidente,
         fechaingresoerror: i.fechaingresoerror,
+        fech_solucion: i.fech_solucion,
         descripcionerror: i.descripcionerror,
         aniosirecq: i.aniosirecq,
         tipologia: i.tipologia,
-        zona: i.zona ? { id_zona: i.zona.id_zona, nombre_zona: i.zona.nombre_zona } : null,
-        estado_acc_inc: i.estado_acc_inc ? {
-          id_estado_acc_inc: i.estado_acc_inc.id_estado_acc_inc,
-          nombre_estado_acc_inc: i.estado_acc_inc.nombre_estado_acc_inc,
-        } : null,
-      }));
-    } catch (error) {
-      console.error('❌ Error en findAllIncidente:', error);
-      throw new HttpException('Error al obtener los incidentes: ' + error.message, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
+        mensajeerror: i.mensajeerror,
+        obs_incidente: i.obs_incidente,
+        error_img: i.error_img,
+        zona: i.zona
+          ? { id_zona: i.zona.id_zona, nombre_zona: i.zona.nombre_zona }
+          : null,
+        estado_acc_inc: i.estado_acc_inc
+          ? {
+              id_estado_acc_inc: i.estado_acc_inc.id_estado_acc_inc,
+              nombre_estado_acc_inc:
+                i.estado_acc_inc.nombre_estado_acc_inc,
+            }
+          : null,
+        tecnico_nombre: tecnico
+          ? `${tecnico.rolUsuario.usuario?.nombre_usuario || ""} ${tecnico.rolUsuario.usuario?.apellidos_usuario || ""}`.trim()
+          : null,
+        analista_nombre: analista
+          ? `${analista.rolUsuario.usuario?.nombre_usuario || ""} ${analista.rolUsuario.usuario?.apellidos_usuario || ""}`.trim()
+          : null,
+      };
+    });
+  } catch (error) {
+    console.error('❌ Error en findAllIncidente:', error);
+    throw new HttpException(
+      'Error al obtener los incidentes: ' + error.message,
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    );
   }
+}
+
+
 
   async findNoIncidente(id_incidente: number): Promise<any> {
     try {
